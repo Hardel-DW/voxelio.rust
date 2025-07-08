@@ -4,10 +4,6 @@ version = "0.1.0"
 edition = "2021"
 description = "Performance benchmarks for NBT-Rust"
 
-[[bin]]
-name = "real-world-test"
-path = "src/main.rs"
-
 [[bench]]
 name = "nbt_comparison"
 path = "bench/nbt_comparison.rs"
