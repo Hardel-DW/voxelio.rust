@@ -1,0 +1,13 @@
+[package]
+name = "nbt-core"
+version = "0.1.0"
+edition = "2021"
+description = "Core NBT types and parsing - zero-copy and fast"
+
+[dependencies]
+thiserror = { workspace = true }
+# ahash = { workspace = true } # Problème de compilation sur Windows, on utilisera HashMap standard
+
+# Pas de criterion pour l'instant, problème dlltool sur Windows
+# [dev-dependencies]
+# criterion = { workspace = true } 

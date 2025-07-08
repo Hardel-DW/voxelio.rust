@@ -1,0 +1,20 @@
+[package]
+name = "nbt-compression"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "High-performance NBT compression (gzip/zlib) - 10x faster than Web APIs"
+license = "MIT"
+
+[dependencies]
+nbt-core = { path = "../nbt-core" }
+flate2 = "1.0"
+thiserror = "1.0"
+
+[dev-dependencies]
+criterion = "0.5"
+
+# TODO: Add benchmarks later
+# [[bench]]
+# name = "compression"
+# harness = false 

@@ -1,0 +1,25 @@
+[package]
+name = "nbt-bench"
+version = "0.1.0"
+edition = "2021"
+description = "Performance benchmarks for NBT-Rust"
+
+[[bin]]
+name = "real-world-test"
+path = "src/main.rs"
+
+[[bench]]
+name = "nbt_comparison"
+path = "bench/nbt_comparison.rs"
+harness = false
+
+[[bench]]
+name = "cube_palette_bench"
+path = "bench/cube_palette_bench.rs"
+harness = false
+
+[dependencies]
+criterion = { workspace = true }
+nbt-core = { path = "../nbt-core" }
+nbt-compression = { path = "../nbt-compression" }
+nbt-snbt = { path = "../nbt-snbt" } 

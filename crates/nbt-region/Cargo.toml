@@ -1,0 +1,13 @@
+[package]
+name = "nbt-region"
+version = "0.1.0"
+edition = "2021"
+description = "Fast Minecraft region file (.mca) reader and writer"
+
+[dependencies]
+nbt-core = { path = "../nbt-core" }
+nbt-compression = { path = "../nbt-compression" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true } 
