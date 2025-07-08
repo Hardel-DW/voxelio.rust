@@ -46,3 +46,6 @@ lcov.info
 # OS generated files
 Thumbs.db
 ehthumbs.db 
+
+node_modules/
+dist/

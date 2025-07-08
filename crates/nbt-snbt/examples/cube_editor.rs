@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Save the modified file
     let new_data = nbt_file.write()?;
-    std::fs::write("crates/nbt-bench/bench/mock/cube_modified.nbt", &new_data)?;
+    std::fs::write("cube_modified.nbt", &new_data)?;
     
     println!("✅ File saved: cube_modified.nbt");
     Ok(())

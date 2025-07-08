@@ -5,8 +5,7 @@ members = [
     "crates/nbt-snbt",
     "crates/nbt-region",
     "crates/nbt-bench",
-    # TODO: Add other crates as we create them
-    # "crates/nbt-wasm",
+    "crates/nbt-wasm",
 ]
 
 resolver = "2"

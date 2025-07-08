@@ -122,6 +122,79 @@ impl NbtFile {
     pub fn get_number(&self, key: &str) -> f64 {
         self.root.get_number(key)
     }
+
+    /// Create NBT file with specific settings
+    pub fn new_with_settings(root: NbtTag, root_name: String, compression: CompressionFormat, _endian: Endian) -> Self {
+        Self {
+            root,
+            root_name,
+            compression,
+        }
+    }
+
+    /// Read with specific format and endianness
+    pub fn read_with_format(data: &[u8], format: CompressionFormat, endian: Endian) -> Result<Self> {
+        // Décompression selon le format spécifié
+        let decompressed = decompress_optimized(data, format)?;
+        
+        // Parse avec l'endianness spécifié
+        let mut reader = NbtReader::new(&decompressed, endian);
+        let tag_type = reader.read_u8()?;
+        
+        if tag_type != 10 {
+            return Err(CompressionError::InvalidFormat);
+        }
+        
+        let root_name = reader.read_string()?;
+        let root = reader.read_tag(tag_type)?;
+        
+        Ok(Self {
+            root,
+            root_name,
+            compression: format,
+        })
+    }
+
+    /// Write NBT file to bytes with compression
+    pub fn write(&self) -> Result<Vec<u8>> {
+        use nbt_core::NbtWriter;
+        
+        // Écrire les données NBT
+        let mut writer = NbtWriter::new(Endian::Big);
+        writer.write_u8(10); // Compound tag
+        writer.write_string(&self.root_name);
+        writer.write_tag(&self.root)?;
+        
+        let uncompressed = writer.into_bytes();
+        
+        // Compresser selon le format
+        match self.compression {
+            CompressionFormat::None => Ok(uncompressed),
+            CompressionFormat::Gzip => compress_data(&uncompressed, CompressionFormat::Gzip),
+            CompressionFormat::Zlib => compress_data(&uncompressed, CompressionFormat::Zlib),
+        }
+    }
+}
+
+/// Compression optimisée avec buffer pooling
+fn compress_data(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> {
+    use flate2::write::{GzEncoder, ZlibEncoder};
+    use flate2::Compression;
+    use std::io::Write;
+    
+    match format {
+        CompressionFormat::None => Ok(data.to_vec()),
+        CompressionFormat::Gzip => {
+            let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+            encoder.write_all(data)?;
+            Ok(encoder.finish()?)
+        },
+        CompressionFormat::Zlib => {
+            let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+            encoder.write_all(data)?;
+            Ok(encoder.finish()?)
+        }
+    }
 }
 
 fn detect_compression(data: &[u8]) -> CompressionFormat {

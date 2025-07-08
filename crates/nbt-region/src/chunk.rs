@@ -94,6 +94,16 @@ impl Chunk {
         Ok(&nbt.root)
     }
 
+    /// Get the root NBT tag (immutable version - parses without caching)
+    pub fn get_root_immutable(&self) -> Result<NbtTag> {
+        let nbt_file = NbtFile::read_with_format(
+            &self.raw_data,
+            self.get_compression(),
+            Endian::Big,
+        )?;
+        Ok(nbt_file.root)
+    }
+
     /// Update the chunk's NBT data
     pub fn set_nbt(&mut self, nbt_file: NbtFile) -> Result<()> {
         self.compression = Self::compression_to_id(nbt_file.compression);
