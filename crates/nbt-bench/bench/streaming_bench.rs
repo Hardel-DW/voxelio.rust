@@ -36,8 +36,9 @@ fn bench_streaming_operations(c: &mut Criterion) {
     let taiga_file = NbtFile::read(taiga_data).unwrap();
     
     let mut group = c.benchmark_group("Streaming Operations");
-    group.measurement_time(Duration::from_secs(3));  // Reduced
-    group.sample_size(50);  // Reduced
+    group.measurement_time(Duration::from_secs(5));  // Increase for stability
+    group.sample_size(30);  // Reduce to minimize outliers
+    group.warm_up_time(Duration::from_secs(2));  // Add warm-up
     
     // Pure extraction - no file reading
     group.bench_function("extract_palette_cube", |b| {
@@ -81,8 +82,9 @@ fn bench_memory_efficiency(c: &mut Criterion) {
     let taiga_file = NbtFile::read(taiga_data).unwrap();
     
     let mut group = c.benchmark_group("Memory Efficiency");
-    group.measurement_time(Duration::from_secs(3));  // Reduced
-    group.sample_size(30);  // Reduced
+    group.measurement_time(Duration::from_secs(5));  // Increase for stability  
+    group.sample_size(20);  // Reduce further
+    group.warm_up_time(Duration::from_secs(2));  // Add warm-up
     
     // Pure operations on pre-loaded files
     group.bench_function("multiple_ops_cube", |b| {
