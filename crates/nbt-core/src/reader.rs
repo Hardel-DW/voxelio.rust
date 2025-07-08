@@ -1,4 +1,5 @@
 use crate::{NbtError, NbtTag, Result};
+use std::collections::HashMap;
 
 /// Endianness for NBT data
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -7,10 +8,10 @@ pub enum Endian {
     Little, // Bedrock Edition
 }
 
-/// Zero-copy NBT reader
+/// Zero-copy NBT reader with streaming capabilities
 pub struct NbtReader<'a> {
     data: &'a [u8],
-    cursor: usize,
+    pub cursor: usize,
     endian: Endian,
 }
 
@@ -23,7 +24,7 @@ impl<'a> NbtReader<'a> {
         self.data.len().saturating_sub(self.cursor)
     }
 
-    /// Read bytes without copying - zero-copy slice
+    // Basic reading methods
     pub fn read_bytes(&mut self, len: usize) -> Result<&'a [u8]> {
         if self.remaining() < len {
             return Err(NbtError::UnexpectedEof);
@@ -75,14 +76,12 @@ impl<'a> NbtReader<'a> {
         Ok(f64::from_bits(self.read_i64()? as u64))
     }
 
-    /// Read string with zero-copy optimization when possible
     pub fn read_string(&mut self) -> Result<String> {
         let len = self.read_i16()? as usize;
         let bytes = self.read_bytes(len)?;
         String::from_utf8(bytes.to_vec()).map_err(|_| NbtError::InvalidUtf8)
     }
 
-    /// Read NBT tag recursively
     pub fn read_tag(&mut self, tag_type: u8) -> Result<NbtTag> {
         match tag_type {
             0 => Ok(NbtTag::End),
@@ -124,13 +123,11 @@ impl<'a> NbtReader<'a> {
     }
 
     fn read_compound(&mut self) -> Result<NbtTag> {
-        let mut map = crate::HashMap::new();
+        let mut map = HashMap::new();
         
         loop {
             let tag_type = self.read_u8()?;
-            if tag_type == 0 { // End tag
-                break;
-            }
+            if tag_type == 0 { break; }
             
             let name = self.read_string()?;
             let value = self.read_tag(tag_type)?;
@@ -157,9 +154,88 @@ impl<'a> NbtReader<'a> {
         }
         Ok(NbtTag::LongArray(array))
     }
+
+    // Streaming methods
+    pub fn skip_tag(&mut self, tag_type: u8) -> Result<()> {
+        match tag_type {
+            0 => {},
+            1 => { self.cursor += 1; },
+            2 => { self.cursor += 2; },
+            3 => { self.cursor += 4; },
+            4 => { self.cursor += 8; },
+            5 => { self.cursor += 4; },
+            6 => { self.cursor += 8; },
+            7 => {
+                let len = self.read_i32()? as usize;
+                self.cursor += len;
+            },
+            8 => {
+                let len = self.read_i16()? as usize;
+                self.cursor += len;
+            },
+            9 => {
+                let list_type = self.read_u8()?;
+                let len = self.read_i32()? as usize;
+                for _ in 0..len {
+                    self.skip_tag(list_type)?;
+                }
+            },
+            10 => {
+                loop {
+                    let tag_type = self.read_u8()?;
+                    if tag_type == 0 { break; }
+                    self.read_string()?;
+                    self.skip_tag(tag_type)?;
+                }
+            },
+            11 => {
+                let len = self.read_i32()? as usize;
+                self.cursor += len * 4;
+            },
+            12 => {
+                let len = self.read_i32()? as usize;
+                self.cursor += len * 8;
+            },
+            _ => return Err(NbtError::InvalidTagType(tag_type)),
+        }
+        Ok(())
+    }
+
+    pub fn find_path(&mut self, path: &str) -> Result<Option<NbtTag>> {
+        let original_cursor = self.cursor;
+        self.cursor = 0;
+        
+        let tag_type = self.read_u8()?;
+        if tag_type != 10 {
+            return Err(NbtError::InvalidTagType(tag_type));
+        }
+        
+        let _root_name = self.read_string()?;
+        let result = self.find_in_compound(path);
+        
+        self.cursor = original_cursor;
+        result
+    }
+
+    fn find_in_compound(&mut self, target_path: &str) -> Result<Option<NbtTag>> {
+        loop {
+            let tag_type = self.read_u8()?;
+            if tag_type == 0 { break; }
+            
+            let name = self.read_string()?;
+            
+            if name == target_path {
+                return Ok(Some(self.read_tag(tag_type)?));
+            }
+            
+            self.skip_tag(tag_type)?;
+        }
+        
+        Ok(None)
+    }
 }
 
-/// NBT writer with efficient buffering
+/// Simple NBT writer
 pub struct NbtWriter {
     buffer: Vec<u8>,
     endian: Endian,
@@ -222,22 +298,21 @@ impl NbtWriter {
         self.buffer.extend_from_slice(value.as_bytes());
     }
 
-    /// Write NBT tag recursively
     pub fn write_tag(&mut self, tag: &NbtTag) -> Result<()> {
         match tag {
-            NbtTag::End => self.write_u8(0),
+            NbtTag::End => {},
             NbtTag::Byte(v) => self.write_i8(*v),
             NbtTag::Short(v) => self.write_i16(*v),
             NbtTag::Int(v) => self.write_i32(*v),
             NbtTag::Long(v) => self.write_i64(*v),
             NbtTag::Float(v) => self.write_f32(*v),
             NbtTag::Double(v) => self.write_f64(*v),
-            NbtTag::ByteArray(arr) => self.write_byte_array(arr),
+            NbtTag::ByteArray(array) => self.write_byte_array(array),
             NbtTag::String(s) => self.write_string(s),
             NbtTag::List { tag_type, items } => self.write_list(*tag_type, items),
             NbtTag::Compound(map) => self.write_compound(map),
-            NbtTag::IntArray(arr) => self.write_int_array(arr),
-            NbtTag::LongArray(arr) => self.write_long_array(arr),
+            NbtTag::IntArray(array) => self.write_int_array(array),
+            NbtTag::LongArray(array) => self.write_long_array(array),
         }
         Ok(())
     }
@@ -257,11 +332,11 @@ impl NbtWriter {
         }
     }
 
-    fn write_compound(&mut self, map: &crate::HashMap<String, NbtTag>) {
-        for (key, value) in map {
-            self.write_u8(value.type_id());
-            self.write_string(key);
-            let _ = self.write_tag(value);
+    fn write_compound(&mut self, map: &HashMap<String, NbtTag>) {
+        for (name, tag) in map {
+            self.write_u8(tag.type_id());
+            self.write_string(name);
+            let _ = self.write_tag(tag);
         }
         self.write_u8(0); // End tag
     }

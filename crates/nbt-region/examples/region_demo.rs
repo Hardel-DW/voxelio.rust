@@ -108,7 +108,7 @@ fn create_chunk_data(x: i32, z: i32, description: &str) -> Result<Chunk> {
     level_data.insert("Biomes".to_string(), NbtTag::IntArray(biomes));
     
     let root = NbtTag::Compound(level_data);
-    let nbt_file = NbtFile::new(root, "Level".to_string(), CompressionFormat::Zlib, nbt_core::Endian::Big);
+    let nbt_file = NbtFile::new_with_settings(root, "Level".to_string(), CompressionFormat::Zlib, nbt_core::Endian::Big);
     
     let timestamp = 1640995200 + (x + z) as u32; // Unique timestamp per chunk
     Chunk::from_nbt(x, z, nbt_file, timestamp)

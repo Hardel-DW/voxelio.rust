@@ -3,11 +3,11 @@
 //! Simple, efficient replacement for the TypeScript NBT implementation.
 
 mod error;
-mod io;
+mod reader;
 mod tag;
 
 pub use error::*;
-pub use io::*;
+pub use reader::*;
 pub use tag::*;
 
 // Re-export commonly used types

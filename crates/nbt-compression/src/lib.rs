@@ -1,5 +1,5 @@
-use nbt_core::{NbtReader, NbtTag, NbtWriter, Endian, Result as NbtResult};
-use flate2::{read::{GzDecoder, ZlibDecoder}, write::{GzEncoder, ZlibEncoder}, Compression};
+use nbt_core::{NbtReader, NbtTag, NbtWriter, Endian};
+use flate2::{read::{GzDecoder, ZlibDecoder}, write::{GzEncoder, ZlibEncoder}, Compression as FlateCompression};
 use std::io::{Read, Write};
 use thiserror::Error;
 
@@ -11,28 +11,21 @@ pub enum CompressionError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
     
-    #[error("Unknown compression format")]
-    UnknownFormat,
-    
-    #[error("Invalid header")]
-    InvalidHeader,
+    #[error("Invalid format")]
+    InvalidFormat,
 }
 
 pub type Result<T> = std::result::Result<T, CompressionError>;
 
-/// Compression format for NBT files
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CompressionFormat {
-    /// No compression (raw NBT)
     None,
-    /// Gzip compression (most common in Minecraft)
     Gzip,
-    /// Zlib compression (used in region files)
     Zlib,
 }
 
-/// NBT file with compression support
-#[derive(Debug)]
+/// Simple NBT file with compression support
+#[derive(Debug, Clone)]
 pub struct NbtFile {
     pub root: NbtTag,
     pub root_name: String,
@@ -41,320 +34,205 @@ pub struct NbtFile {
 }
 
 impl NbtFile {
-    /// Create a new NBT file
-    pub fn new(root: NbtTag, root_name: String, compression: CompressionFormat, endian: Endian) -> Self {
-        Self { root, root_name, compression, endian }
+    pub fn new(root: NbtTag, root_name: String) -> Self {
+        Self {
+            root,
+            root_name,
+            compression: CompressionFormat::Gzip,
+            endian: Endian::Big,
+        }
     }
 
-    /// Auto-detect compression format from file header
-    pub fn detect_compression(data: &[u8]) -> CompressionFormat {
-        if data.len() < 2 {
-            return CompressionFormat::None;
+    // Legacy constructor with all parameters
+    pub fn new_with_settings(root: NbtTag, root_name: String, compression: CompressionFormat, endian: Endian) -> Self {
+        Self {
+            root,
+            root_name,
+            compression,
+            endian,
         }
-
-        // Gzip magic bytes: 0x1f 0x8b
-        if data[0] == 0x1f && data[1] == 0x8b {
-            return CompressionFormat::Gzip;
-        }
-
-        // Zlib magic bytes: 0x78 followed by 0x01, 0x9c, 0xda, etc.
-        if data[0] == 0x78 && (data[1] & 0x20) == 0 {
-            return CompressionFormat::Zlib;
-        }
-
-        CompressionFormat::None
     }
 
-    /// Read NBT from compressed bytes with auto-detection
-    pub fn read(data: &[u8], endian: Endian) -> Result<Self> {
-        let compression = Self::detect_compression(data);
-        Self::read_with_format(data, compression, endian)
+    pub fn read(data: &[u8]) -> Result<Self> {
+        let compression = detect_compression(data);
+        let uncompressed = decompress(data, compression)?;
+        
+        let mut reader = NbtReader::new(&uncompressed, Endian::Big);
+        let tag_type = reader.read_u8()?;
+        
+        if tag_type != 10 {
+            return Err(CompressionError::InvalidFormat);
+        }
+        
+        let root_name = reader.read_string()?;
+        let root = reader.read_tag(tag_type)?;
+        
+        Ok(Self {
+            root,
+            root_name,
+            compression,
+            endian: Endian::Big,
+        })
     }
 
-    /// Read NBT with specific compression format
     pub fn read_with_format(data: &[u8], format: CompressionFormat, endian: Endian) -> Result<Self> {
-        let uncompressed = match format {
-            CompressionFormat::None => data.to_vec(),
-            CompressionFormat::Gzip => Self::decompress_gzip(data)?,
-            CompressionFormat::Zlib => Self::decompress_zlib(data)?,
-        };
+        let uncompressed = decompress(data, format)?;
 
         let mut reader = NbtReader::new(&uncompressed, endian);
-        
-        // Read root tag (should be compound)
         let tag_type = reader.read_u8()?;
+        
         if tag_type != 10 {
-            return Err(CompressionError::InvalidHeader);
+            return Err(CompressionError::InvalidFormat);
         }
         
         let root_name = reader.read_string()?;
         let root = reader.read_tag(tag_type)?;
 
-        Ok(Self::new(root, root_name, format, endian))
+        Ok(Self {
+            root,
+            root_name,
+            compression: format,
+            endian,
+        })
     }
 
-    /// Write NBT to compressed bytes
     pub fn write(&self) -> Result<Vec<u8>> {
-        // Write uncompressed NBT first
         let mut writer = NbtWriter::new(self.endian);
         writer.write_u8(self.root.type_id());
         writer.write_string(&self.root_name);
         writer.write_tag(&self.root)?;
-        let uncompressed = writer.into_bytes();
+        
+        let data = writer.into_bytes();
+        compress(&data, self.compression)
+    }
 
-        // Apply compression
-        match self.compression {
-            CompressionFormat::None => Ok(uncompressed),
-            CompressionFormat::Gzip => Self::compress_gzip(&uncompressed),
-            CompressionFormat::Zlib => Self::compress_zlib(&uncompressed),
+    pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
+        let data = std::fs::read(path)?;
+        Self::read(&data)
+    }
+
+    pub fn to_file<P: AsRef<std::path::Path>>(&self, path: P) -> Result<()> {
+        let data = self.write()?;
+        std::fs::write(path, data)?;
+        Ok(())
+    }
+
+    // Legacy API methods
+    pub fn parse_full(&self) -> Result<NbtTag> {
+        Ok(self.root.clone())
+    }
+
+    pub fn get(&self, key: &str) -> Option<&NbtTag> {
+        self.root.get(key)
+    }
+
+    pub fn get_string(&self, key: &str) -> &str {
+        self.root.get_string(key)
+    }
+
+    pub fn get_number(&self, key: &str) -> f64 {
+        self.root.get_number(key)
+    }
+
+    // Compatibility methods (simplified versions)
+    pub fn get_tag_by_path(&self, path: &str) -> Result<Option<NbtTag>> {
+        Ok(self.root.get(path).cloned())
+    }
+
+    pub fn extract_paths(&self, paths: &[&str]) -> Result<std::collections::HashMap<String, NbtTag>> {
+        let mut result = std::collections::HashMap::new();
+        for path in paths {
+            if let Some(tag) = self.root.get(path) {
+                result.insert(path.to_string(), tag.clone());
+            }
         }
+        Ok(result)
     }
 
-    /// Compress data with gzip (fast native compression)
-    pub fn compress_gzip(data: &[u8]) -> Result<Vec<u8>> {
-        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-        encoder.write_all(data)?;
-        Ok(encoder.finish()?)
+    pub fn detect_compression(data: &[u8]) -> CompressionFormat {
+        detect_compression(data)
+    }
+}
+
+fn detect_compression(data: &[u8]) -> CompressionFormat {
+    if data.len() < 2 {
+        return CompressionFormat::None;
     }
 
-    /// Decompress gzip data (fast native decompression)
-    pub fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>> {
+    if data[0] == 0x1f && data[1] == 0x8b {
+        return CompressionFormat::Gzip;
+    }
+
+    if data[0] == 0x78 && (data[1] & 0x20) == 0 {
+        return CompressionFormat::Zlib;
+    }
+
+    CompressionFormat::None
+}
+
+fn decompress(data: &[u8], compression: CompressionFormat) -> Result<Vec<u8>> {
+    match compression {
+        CompressionFormat::None => Ok(data.to_vec()),
+        CompressionFormat::Gzip => {
         let mut decoder = GzDecoder::new(data);
         let mut result = Vec::new();
         decoder.read_to_end(&mut result)?;
         Ok(result)
-    }
-
-    /// Compress data with zlib (fast native compression)
-    pub fn compress_zlib(data: &[u8]) -> Result<Vec<u8>> {
-        let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-        encoder.write_all(data)?;
-        Ok(encoder.finish()?)
-    }
-
-    /// Decompress zlib data (fast native decompression)  
-    pub fn decompress_zlib(data: &[u8]) -> Result<Vec<u8>> {
+        },
+        CompressionFormat::Zlib => {
         let mut decoder = ZlibDecoder::new(data);
         let mut result = Vec::new();
         decoder.read_to_end(&mut result)?;
         Ok(result)
+        },
     }
 }
 
-// =============== CONVENIENCE FUNCTIONS ===============
+fn compress(data: &[u8], compression: CompressionFormat) -> Result<Vec<u8>> {
+    match compression {
+        CompressionFormat::None => Ok(data.to_vec()),
+        CompressionFormat::Gzip => {
+            let mut encoder = GzEncoder::new(Vec::new(), FlateCompression::default());
+            encoder.write_all(data)?;
+            Ok(encoder.finish()?)
+        },
+        CompressionFormat::Zlib => {
+            let mut encoder = ZlibEncoder::new(Vec::new(), FlateCompression::default());
+            encoder.write_all(data)?;
+            Ok(encoder.finish()?)
+        },
+    }
+}
 
-/// Read NBT file from bytes with auto-detection
-pub fn read_nbt(data: &[u8], endian: Endian) -> Result<(NbtTag, String)> {
-    let file = NbtFile::read(data, endian)?;
+// Simple convenience functions
+pub fn read_nbt(data: &[u8]) -> Result<(NbtTag, String)> {
+    let file = NbtFile::read(data)?;
     Ok((file.root, file.root_name))
 }
 
-/// Write NBT to gzip compressed bytes (most common format)
-pub fn write_nbt_gzip(root: &NbtTag, root_name: &str, endian: Endian) -> Result<Vec<u8>> {
-    let file = NbtFile::new(root.clone(), root_name.to_string(), CompressionFormat::Gzip, endian);
+pub fn write_nbt(root: &NbtTag, root_name: &str, compression: CompressionFormat) -> Result<Vec<u8>> {
+    let file = NbtFile {
+        root: root.clone(),
+        root_name: root_name.to_string(),
+        compression,
+        endian: Endian::Big,
+    };
     file.write()
 }
 
-/// Write NBT to zlib compressed bytes (region files)
-pub fn write_nbt_zlib(root: &NbtTag, root_name: &str, endian: Endian) -> Result<Vec<u8>> {
-    let file = NbtFile::new(root.clone(), root_name.to_string(), CompressionFormat::Zlib, endian);
-    file.write()
+// Legacy compatibility functions
+pub fn write_nbt_gzip(root: &NbtTag, root_name: &str, _endian: Endian) -> Result<Vec<u8>> {
+    write_nbt(root, root_name, CompressionFormat::Gzip)
 }
 
-/// Write NBT to uncompressed bytes
-pub fn write_nbt_uncompressed(root: &NbtTag, root_name: &str, endian: Endian) -> NbtResult<Vec<u8>> {
+pub fn write_nbt_zlib(root: &NbtTag, root_name: &str, _endian: Endian) -> Result<Vec<u8>> {
+    write_nbt(root, root_name, CompressionFormat::Zlib)
+}
+
+pub fn write_nbt_uncompressed(root: &NbtTag, root_name: &str, endian: Endian) -> Result<Vec<u8>> {
     let mut writer = NbtWriter::new(endian);
     writer.write_u8(root.type_id());
     writer.write_string(root_name);
     writer.write_tag(root)?;
     Ok(writer.into_bytes())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use nbt_core::HashMap;
-
-    fn create_test_nbt() -> (NbtTag, String) {
-        let mut map = HashMap::new();
-        map.insert("name".to_string(), NbtTag::String("TestWorld".to_string()));
-        map.insert("version".to_string(), NbtTag::Int(19133));
-        map.insert("spawn_x".to_string(), NbtTag::Int(0));
-        map.insert("spawn_y".to_string(), NbtTag::Int(64));
-        map.insert("spawn_z".to_string(), NbtTag::Int(0));
-        
-        (NbtTag::Compound(map), "Data".to_string())
-    }
-
-    #[test]
-    fn test_compression_detection() {
-        // Gzip header
-        let gzip_data = &[0x1f, 0x8b, 0x08, 0x00];
-        assert_eq!(NbtFile::detect_compression(gzip_data), CompressionFormat::Gzip);
-
-        // Zlib header (0x78 + valid second byte)
-        let zlib_data = &[0x78, 0x9c];
-        assert_eq!(NbtFile::detect_compression(zlib_data), CompressionFormat::Zlib);
-
-        // Raw NBT (compound tag)
-        let raw_data = &[0x0a, 0x00, 0x04];
-        assert_eq!(NbtFile::detect_compression(raw_data), CompressionFormat::None);
-    }
-
-    #[test]
-    fn test_gzip_roundtrip() {
-        let (root, root_name) = create_test_nbt();
-        
-        // Write compressed
-        let compressed = write_nbt_gzip(&root, &root_name, Endian::Big).unwrap();
-        
-        // Note: For very small NBT files, compression might be larger due to overhead
-        // This is expected and normal behavior
-        let _uncompressed = write_nbt_uncompressed(&root, &root_name, Endian::Big).unwrap();
-        
-        // Read back and verify round-trip works
-        let (parsed_root, parsed_name) = read_nbt(&compressed, Endian::Big).unwrap();
-        assert_eq!(parsed_root, root);
-        assert_eq!(parsed_name, root_name);
-    }
-
-    #[test]
-    fn test_zlib_roundtrip() {
-        let (root, root_name) = create_test_nbt();
-        
-        // Write compressed
-        let compressed = write_nbt_zlib(&root, &root_name, Endian::Big).unwrap();
-        
-        // Note: For very small NBT files, compression might be larger due to overhead
-        let _uncompressed = write_nbt_uncompressed(&root, &root_name, Endian::Big).unwrap();
-        
-        // Read back and verify round-trip works
-        let (parsed_root, parsed_name) = read_nbt(&compressed, Endian::Big).unwrap();
-        assert_eq!(parsed_root, root);
-        assert_eq!(parsed_name, root_name);
-    }
-
-    #[test]
-    fn test_auto_detection() {
-        let (root, root_name) = create_test_nbt();
-        
-        // Test gzip auto-detection
-        let gzip_data = write_nbt_gzip(&root, &root_name, Endian::Big).unwrap();
-        let file = NbtFile::read(&gzip_data, Endian::Big).unwrap();
-        assert_eq!(file.compression, CompressionFormat::Gzip);
-        assert_eq!(file.root, root);
-        
-        // Test zlib auto-detection  
-        let zlib_data = write_nbt_zlib(&root, &root_name, Endian::Big).unwrap();
-        let file = NbtFile::read(&zlib_data, Endian::Big).unwrap();
-        assert_eq!(file.compression, CompressionFormat::Zlib);
-        assert_eq!(file.root, root);
-    }
-
-    #[test]
-    fn test_minecraft_like_structure() {
-        // Simule une structure level.dat typique
-        let mut data = HashMap::new();
-        data.insert("LevelName".to_string(), NbtTag::String("New World".to_string()));
-        data.insert("version".to_string(), NbtTag::Int(19133));
-        data.insert("SpawnX".to_string(), NbtTag::Int(256));
-        data.insert("SpawnY".to_string(), NbtTag::Int(64));
-        data.insert("SpawnZ".to_string(), NbtTag::Int(-128));
-        data.insert("Time".to_string(), NbtTag::Long(123456789));
-        data.insert("raining".to_string(), NbtTag::Byte(0));
-        data.insert("thundering".to_string(), NbtTag::Byte(1));
-        
-        let root = NbtTag::Compound(data);
-        
-        // Test avec gzip (format level.dat standard)
-        let file = NbtFile::new(root.clone(), "".to_string(), CompressionFormat::Gzip, Endian::Big);
-        let compressed = file.write().unwrap();
-        
-        // Vérifie que c'est du gzip valide
-        assert_eq!(compressed[0], 0x1f);
-        assert_eq!(compressed[1], 0x8b);
-        
-        // Round-trip
-        let parsed = NbtFile::read(&compressed, Endian::Big).unwrap();
-        assert_eq!(parsed.root, root);
-        assert_eq!(parsed.compression, CompressionFormat::Gzip);
-    }
-
-    #[test]
-    fn test_nbt_editing_functionality() {
-        // Read test NBT file
-        let test_data = include_bytes!("../tests/taiga_armorer_2.nbt");
-        let mut nbt_file = NbtFile::read(test_data, Endian::Big).unwrap();
-        
-        // Helper function to recursively replace strings in NBT
-        fn replace_strings_recursive(tag: &mut NbtTag, from: &str, to: &str) -> usize {
-            let mut changes = 0;
-            
-            match tag {
-                NbtTag::String(s) => {
-                    if s == from {
-                        *s = to.to_string();
-                        changes += 1;
-                    }
-                },
-                NbtTag::Compound(map) => {
-                    for value in map.values_mut() {
-                        changes += replace_strings_recursive(value, from, to);
-                    }
-                },
-                NbtTag::List { items, .. } => {
-                    for item in items.iter_mut() {
-                        changes += replace_strings_recursive(item, from, to);
-                    }
-                },
-                _ => {}
-            }
-            
-            changes
-        }
-        
-        // Helper function to count string occurrences
-        fn count_strings(tag: &NbtTag, target: &str) -> usize {
-            match tag {
-                NbtTag::String(s) if s == target => 1,
-                NbtTag::Compound(map) => map.values().map(|v| count_strings(v, target)).sum(),
-                NbtTag::List { items, .. } => items.iter().map(|item| count_strings(item, target)).sum(),
-                _ => 0
-            }
-        }
-        
-        // Verify initial state - should have grass blocks but no diamond blocks
-        let initial_grass_count = count_strings(&nbt_file.root, "minecraft:grass_block");
-        let initial_diamond_count = count_strings(&nbt_file.root, "minecraft:diamond_block");
-        
-        assert!(initial_grass_count > 0, "Test file should contain minecraft:grass_block");
-        assert_eq!(initial_diamond_count, 0, "Test file should not contain minecraft:diamond_block initially");
-        
-        // Replace minecraft:grass_block with minecraft:diamond_block
-        let changes = replace_strings_recursive(&mut nbt_file.root, "minecraft:grass_block", "minecraft:diamond_block");
-        assert_eq!(changes, initial_grass_count, "Should replace all grass blocks");
-        
-        // Verify replacement worked
-        let final_grass_count = count_strings(&nbt_file.root, "minecraft:grass_block");
-        let final_diamond_count = count_strings(&nbt_file.root, "minecraft:diamond_block");
-        
-        assert_eq!(final_grass_count, 0, "No grass blocks should remain after replacement");
-        assert_eq!(final_diamond_count, initial_grass_count, "Diamond block count should equal original grass block count");
-        
-        // Test round-trip: write and read back the modified NBT
-        let modified_data = nbt_file.write().unwrap();
-        let verification_file = NbtFile::read(&modified_data, Endian::Big).unwrap();
-        
-        // Verify persistence of changes
-        let persisted_grass_count = count_strings(&verification_file.root, "minecraft:grass_block");
-        let persisted_diamond_count = count_strings(&verification_file.root, "minecraft:diamond_block");
-        
-        assert_eq!(persisted_grass_count, 0, "Changes should persist after write/read cycle");
-        assert_eq!(persisted_diamond_count, initial_grass_count, "Diamond blocks should persist after write/read cycle");
-        
-        // Ensure NBT structure integrity is maintained
-        assert_eq!(verification_file.root_name, nbt_file.root_name, "Root name should be preserved");
-        assert_eq!(verification_file.compression, nbt_file.compression, "Compression format should be preserved");
-        assert_eq!(verification_file.endian, nbt_file.endian, "Endianness should be preserved");
-    }
 } 

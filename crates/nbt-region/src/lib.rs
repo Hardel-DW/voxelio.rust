@@ -37,7 +37,7 @@ mod tests {
         level_data.insert("LastUpdate".to_string(), NbtTag::Long(12345));
         
         let root = NbtTag::Compound(level_data);
-        NbtFile::new(root, "Level".to_string(), CompressionFormat::Zlib, Endian::Big)
+        NbtFile::new_with_settings(root, "Level".to_string(), CompressionFormat::Zlib, Endian::Big)
     }
 
     #[test]

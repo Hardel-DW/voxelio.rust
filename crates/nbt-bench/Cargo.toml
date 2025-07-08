@@ -5,13 +5,18 @@ edition = "2021"
 description = "Performance benchmarks for NBT-Rust"
 
 [[bench]]
-name = "nbt_comparison"
-path = "bench/nbt_comparison.rs"
+name = "streaming_bench"
+path = "bench/streaming_bench.rs"
 harness = false
 
 [[bench]]
-name = "cube_palette_bench"
-path = "bench/cube_palette_bench.rs"
+name = "batch_processing_bench"
+path = "bench/batch_processing_bench.rs"
+harness = false
+
+[[bench]]
+name = "editing_bench"
+path = "bench/editing_bench.rs"
 harness = false
 
 [dependencies]
