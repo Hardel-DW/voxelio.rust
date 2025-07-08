@@ -279,4 +279,82 @@ mod tests {
         assert_eq!(parsed.root, root);
         assert_eq!(parsed.compression, CompressionFormat::Gzip);
     }
+
+    #[test]
+    fn test_nbt_editing_functionality() {
+        // Read test NBT file
+        let test_data = include_bytes!("../tests/taiga_armorer_2.nbt");
+        let mut nbt_file = NbtFile::read(test_data, Endian::Big).unwrap();
+        
+        // Helper function to recursively replace strings in NBT
+        fn replace_strings_recursive(tag: &mut NbtTag, from: &str, to: &str) -> usize {
+            let mut changes = 0;
+            
+            match tag {
+                NbtTag::String(s) => {
+                    if s == from {
+                        *s = to.to_string();
+                        changes += 1;
+                    }
+                },
+                NbtTag::Compound(map) => {
+                    for value in map.values_mut() {
+                        changes += replace_strings_recursive(value, from, to);
+                    }
+                },
+                NbtTag::List { items, .. } => {
+                    for item in items.iter_mut() {
+                        changes += replace_strings_recursive(item, from, to);
+                    }
+                },
+                _ => {}
+            }
+            
+            changes
+        }
+        
+        // Helper function to count string occurrences
+        fn count_strings(tag: &NbtTag, target: &str) -> usize {
+            match tag {
+                NbtTag::String(s) if s == target => 1,
+                NbtTag::Compound(map) => map.values().map(|v| count_strings(v, target)).sum(),
+                NbtTag::List { items, .. } => items.iter().map(|item| count_strings(item, target)).sum(),
+                _ => 0
+            }
+        }
+        
+        // Verify initial state - should have grass blocks but no diamond blocks
+        let initial_grass_count = count_strings(&nbt_file.root, "minecraft:grass_block");
+        let initial_diamond_count = count_strings(&nbt_file.root, "minecraft:diamond_block");
+        
+        assert!(initial_grass_count > 0, "Test file should contain minecraft:grass_block");
+        assert_eq!(initial_diamond_count, 0, "Test file should not contain minecraft:diamond_block initially");
+        
+        // Replace minecraft:grass_block with minecraft:diamond_block
+        let changes = replace_strings_recursive(&mut nbt_file.root, "minecraft:grass_block", "minecraft:diamond_block");
+        assert_eq!(changes, initial_grass_count, "Should replace all grass blocks");
+        
+        // Verify replacement worked
+        let final_grass_count = count_strings(&nbt_file.root, "minecraft:grass_block");
+        let final_diamond_count = count_strings(&nbt_file.root, "minecraft:diamond_block");
+        
+        assert_eq!(final_grass_count, 0, "No grass blocks should remain after replacement");
+        assert_eq!(final_diamond_count, initial_grass_count, "Diamond block count should equal original grass block count");
+        
+        // Test round-trip: write and read back the modified NBT
+        let modified_data = nbt_file.write().unwrap();
+        let verification_file = NbtFile::read(&modified_data, Endian::Big).unwrap();
+        
+        // Verify persistence of changes
+        let persisted_grass_count = count_strings(&verification_file.root, "minecraft:grass_block");
+        let persisted_diamond_count = count_strings(&verification_file.root, "minecraft:diamond_block");
+        
+        assert_eq!(persisted_grass_count, 0, "Changes should persist after write/read cycle");
+        assert_eq!(persisted_diamond_count, initial_grass_count, "Diamond blocks should persist after write/read cycle");
+        
+        // Ensure NBT structure integrity is maintained
+        assert_eq!(verification_file.root_name, nbt_file.root_name, "Root name should be preserved");
+        assert_eq!(verification_file.compression, nbt_file.compression, "Compression format should be preserved");
+        assert_eq!(verification_file.endian, nbt_file.endian, "Endianness should be preserved");
+    }
 } 

@@ -1,7 +1,7 @@
 use crate::{NbtError, NbtTag, Result};
 
 /// Endianness for NBT data
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Endian {
     Big,    // Java Edition (default)
     Little, // Bedrock Edition
