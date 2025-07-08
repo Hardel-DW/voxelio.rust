@@ -1,5 +1,5 @@
 use crate::{NbtError, NbtTag, Result};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Endianness for NBT data
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -132,6 +132,29 @@ impl<'a> NbtReader<'a> {
             let name = self.read_string()?;
             let value = self.read_tag(tag_type)?;
             map.insert(name, value);
+        }
+        
+        Ok(NbtTag::Compound(map))
+    }
+    
+    /// Parse seulement les champs spécifiés pour optimiser la performance
+    pub fn read_compound_selective(&mut self, wanted_fields: &[&str]) -> Result<NbtTag> {
+        let mut map = HashMap::new();
+        let wanted_set: HashSet<&str> = wanted_fields.iter().copied().collect();
+        
+        loop {
+            let tag_type = self.read_u8()?;
+            if tag_type == 0 { break; }
+            
+            let name = self.read_string()?;
+            
+            if wanted_set.contains(name.as_str()) {
+                let value = self.read_tag(tag_type)?;
+                map.insert(name, value);
+            } else {
+                // Skip ce tag pour économiser du temps
+                self.skip_tag(tag_type)?;
+            }
         }
         
         Ok(NbtTag::Compound(map))

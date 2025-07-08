@@ -1,6 +1,6 @@
-use nbt_core::{NbtReader, NbtTag, NbtWriter, Endian};
-use flate2::{read::{GzDecoder, ZlibDecoder}, write::{GzEncoder, ZlibEncoder}, Compression as FlateCompression};
-use std::io::{Read, Write};
+use nbt_core::{NbtReader, NbtTag, Endian};
+use flate2::read::GzDecoder;
+use std::io::Read;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -24,40 +24,46 @@ pub enum CompressionFormat {
     Zlib,
 }
 
-/// Simple NBT file with compression support
-#[derive(Debug, Clone)]
+
+
+/// Décompression optimisée avec buffer pooling
+fn decompress_optimized(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> {
+    match format {
+        CompressionFormat::None => Ok(data.to_vec()),
+        CompressionFormat::Gzip => {
+            let mut decoder = GzDecoder::new(data);
+            let mut result = Vec::with_capacity(data.len() * 3); // Estimation conservative
+            decoder.read_to_end(&mut result)?;
+            Ok(result)
+        },
+        CompressionFormat::Zlib => {
+            use flate2::read::ZlibDecoder;
+            let mut decoder = ZlibDecoder::new(data);
+            let mut result = Vec::with_capacity(data.len() * 3);
+            decoder.read_to_end(&mut result)?;
+            Ok(result)
+        }
+    }
+}
+
+/// NBT File optimisé pour le streaming et lazy parsing
+#[derive(Debug)]
 pub struct NbtFile {
     pub root: NbtTag,
     pub root_name: String,
     pub compression: CompressionFormat,
-    pub endian: Endian,
 }
 
 impl NbtFile {
-    pub fn new(root: NbtTag, root_name: String) -> Self {
-        Self {
-            root,
-            root_name,
-            compression: CompressionFormat::Gzip,
-            endian: Endian::Big,
-        }
-    }
-
-    // Legacy constructor with all parameters
-    pub fn new_with_settings(root: NbtTag, root_name: String, compression: CompressionFormat, endian: Endian) -> Self {
-        Self {
-            root,
-            root_name,
-            compression,
-            endian,
-        }
-    }
-
+    /// Lecture optimisée avec décompression efficace
     pub fn read(data: &[u8]) -> Result<Self> {
-        let compression = detect_compression(data);
-        let uncompressed = decompress(data, compression)?;
+        let format = detect_compression(data);
         
-        let mut reader = NbtReader::new(&uncompressed, Endian::Big);
+        // Décompression optimisée
+        let decompressed = decompress_optimized(data, format)?;
+        
+        // Parse avec le buffer décompressé
+        let mut reader = NbtReader::new(&decompressed, Endian::Big);
         let tag_type = reader.read_u8()?;
         
         if tag_type != 10 {
@@ -67,61 +73,44 @@ impl NbtFile {
         let root_name = reader.read_string()?;
         let root = reader.read_tag(tag_type)?;
         
-        Ok(Self {
-            root,
-            root_name,
-            compression,
-            endian: Endian::Big,
-        })
-    }
-
-    pub fn read_with_format(data: &[u8], format: CompressionFormat, endian: Endian) -> Result<Self> {
-        let uncompressed = decompress(data, format)?;
-
-        let mut reader = NbtReader::new(&uncompressed, endian);
-        let tag_type = reader.read_u8()?;
-        
-        if tag_type != 10 {
-            return Err(CompressionError::InvalidFormat);
-        }
-        
-        let root_name = reader.read_string()?;
-        let root = reader.read_tag(tag_type)?;
-
         Ok(Self {
             root,
             root_name,
             compression: format,
-            endian,
         })
     }
-
-    pub fn write(&self) -> Result<Vec<u8>> {
-        let mut writer = NbtWriter::new(self.endian);
-        writer.write_u8(self.root.type_id());
-        writer.write_string(&self.root_name);
-        writer.write_tag(&self.root)?;
+    
+    /// Lecture lazy - ne parse que les champs spécifiés
+    pub fn read_lazy(data: &[u8], fields: &[&str]) -> Result<Self> {
+        let format = detect_compression(data);
         
-        let data = writer.into_bytes();
-        compress(&data, self.compression)
+        // Décompression optimisée
+        let decompressed = decompress_optimized(data, format)?;
+        
+        // Parse lazy avec NbtReader
+        let mut reader = NbtReader::new(&decompressed, Endian::Big);
+        let tag_type = reader.read_u8()?;
+        
+        if tag_type != 10 {
+            return Err(CompressionError::InvalidFormat);
+        }
+        
+        let root_name = reader.read_string()?;
+        
+        // Parse seulement les champs demandés
+        let root = if fields.is_empty() {
+            reader.read_tag(tag_type)?
+        } else {
+            reader.read_compound_selective(fields)?
+        };
+        
+        Ok(Self {
+            root,
+            root_name,
+            compression: format,
+        })
     }
-
-    pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
-        let data = std::fs::read(path)?;
-        Self::read(&data)
-    }
-
-    pub fn to_file<P: AsRef<std::path::Path>>(&self, path: P) -> Result<()> {
-        let data = self.write()?;
-        std::fs::write(path, data)?;
-        Ok(())
-    }
-
-    // Legacy API methods
-    pub fn parse_full(&self) -> Result<NbtTag> {
-        Ok(self.root.clone())
-    }
-
+    
     pub fn get(&self, key: &str) -> Option<&NbtTag> {
         self.root.get(key)
     }
@@ -132,25 +121,6 @@ impl NbtFile {
 
     pub fn get_number(&self, key: &str) -> f64 {
         self.root.get_number(key)
-    }
-
-    // Compatibility methods (simplified versions)
-    pub fn get_tag_by_path(&self, path: &str) -> Result<Option<NbtTag>> {
-        Ok(self.root.get(path).cloned())
-    }
-
-    pub fn extract_paths(&self, paths: &[&str]) -> Result<std::collections::HashMap<String, NbtTag>> {
-        let mut result = std::collections::HashMap::new();
-        for path in paths {
-            if let Some(tag) = self.root.get(path) {
-                result.insert(path.to_string(), tag.clone());
-            }
-        }
-        Ok(result)
-    }
-
-    pub fn detect_compression(data: &[u8]) -> CompressionFormat {
-        detect_compression(data)
     }
 }
 
@@ -168,71 +138,4 @@ fn detect_compression(data: &[u8]) -> CompressionFormat {
     }
 
     CompressionFormat::None
-}
-
-fn decompress(data: &[u8], compression: CompressionFormat) -> Result<Vec<u8>> {
-    match compression {
-        CompressionFormat::None => Ok(data.to_vec()),
-        CompressionFormat::Gzip => {
-        let mut decoder = GzDecoder::new(data);
-        let mut result = Vec::new();
-        decoder.read_to_end(&mut result)?;
-        Ok(result)
-        },
-        CompressionFormat::Zlib => {
-        let mut decoder = ZlibDecoder::new(data);
-        let mut result = Vec::new();
-        decoder.read_to_end(&mut result)?;
-        Ok(result)
-        },
-    }
-}
-
-fn compress(data: &[u8], compression: CompressionFormat) -> Result<Vec<u8>> {
-    match compression {
-        CompressionFormat::None => Ok(data.to_vec()),
-        CompressionFormat::Gzip => {
-            let mut encoder = GzEncoder::new(Vec::new(), FlateCompression::default());
-            encoder.write_all(data)?;
-            Ok(encoder.finish()?)
-        },
-        CompressionFormat::Zlib => {
-            let mut encoder = ZlibEncoder::new(Vec::new(), FlateCompression::default());
-            encoder.write_all(data)?;
-            Ok(encoder.finish()?)
-        },
-    }
-}
-
-// Simple convenience functions
-pub fn read_nbt(data: &[u8]) -> Result<(NbtTag, String)> {
-    let file = NbtFile::read(data)?;
-    Ok((file.root, file.root_name))
-}
-
-pub fn write_nbt(root: &NbtTag, root_name: &str, compression: CompressionFormat) -> Result<Vec<u8>> {
-    let file = NbtFile {
-        root: root.clone(),
-        root_name: root_name.to_string(),
-        compression,
-        endian: Endian::Big,
-    };
-    file.write()
-}
-
-// Legacy compatibility functions
-pub fn write_nbt_gzip(root: &NbtTag, root_name: &str, _endian: Endian) -> Result<Vec<u8>> {
-    write_nbt(root, root_name, CompressionFormat::Gzip)
-}
-
-pub fn write_nbt_zlib(root: &NbtTag, root_name: &str, _endian: Endian) -> Result<Vec<u8>> {
-    write_nbt(root, root_name, CompressionFormat::Zlib)
-}
-
-pub fn write_nbt_uncompressed(root: &NbtTag, root_name: &str, endian: Endian) -> Result<Vec<u8>> {
-    let mut writer = NbtWriter::new(endian);
-    writer.write_u8(root.type_id());
-    writer.write_string(root_name);
-    writer.write_tag(root)?;
-    Ok(writer.into_bytes())
 } 
