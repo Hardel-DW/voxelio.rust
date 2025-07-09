@@ -5,6 +5,14 @@
  */
 export function main(): void;
 /**
+ * Detect compression format from bytes
+ */
+export function detectCompression(data: Uint8Array): string;
+/**
+ * Get version info
+ */
+export function getVersion(): string;
+/**
  * Parse SNBT string to NBT tag
  */
 export function parseSnbt(input: string): JsNbtTag;
@@ -13,13 +21,9 @@ export function parseSnbt(input: string): JsNbtTag;
  */
 export function formatSnbt(tag: JsNbtTag): string;
 /**
- * Detect compression format from bytes
+ * Format NBT tag to pretty SNBT string with indentation
  */
-export function detectCompression(data: Uint8Array): string;
-/**
- * Get version info
- */
-export function getVersion(): string;
+export function formatSnbtPretty(tag: JsNbtTag): string;
 /**
  * NBT file wrapper - handles all compression formats
  */
@@ -35,29 +39,25 @@ export class JsNbtFile {
    */
   static readFields(data: Uint8Array, fields: string): JsNbtFile;
   /**
-   * Get mutable root tag (for editing)
+   * Process multiple paths in one call - avoids WASM round-trips
    */
-  getRootMut(): JsNbtTag;
-  /**
-   * Update root from modified JsNbtTag
-   */
-  setRoot(new_root: JsNbtTag): void;
-  /**
-   * Direct edit methods to avoid copy issues - using same logic as Rust example
-   */
-  setStringInListItem(path: string, index: number, key: string, value: string): boolean;
-  /**
-   * Get string from list item
-   */
-  getStringFromListItem(path: string, index: number, key: string): string;
+  getMultiplePaths(paths: string): any;
   /**
    * Write NBT file to bytes
    */
   write(): Uint8Array;
   /**
-   * Create a new NBT file from SNBT string
+   * Set string value by path - DIRECTLY modifies the internal root
    */
-  static fromSnbt(snbt: string, name: string, compression: string): JsNbtFile;
+  setStringByPath(path: string, value: string): boolean;
+  /**
+   * Set number value by path - DIRECTLY modifies the internal root
+   */
+  setNumberByPath(path: string, value: number): boolean;
+  /**
+   * Modify list item by path and index - for compound modifications
+   */
+  modifyListItem(list_path: string, index: number, key: string, value: string): boolean;
   /**
    * Get root tag
    */
@@ -125,18 +125,6 @@ export class JsNbtTag {
    */
   get(key: string): JsNbtTag | undefined;
   /**
-   * Get string value by key
-   */
-  getString(key: string): string;
-  /**
-   * Get number value by key
-   */
-  getNumber(key: string): number;
-  /**
-   * Get boolean value by key
-   */
-  getBool(key: string): boolean;
-  /**
    * Type checking
    */
   isNumber(): boolean;
@@ -160,17 +148,21 @@ export class JsNbtTag {
    */
   getListItem(index: number): JsNbtTag | undefined;
   /**
-   * Set string value in list item compound by index and key
+   * Get tag by path (e.g., "Data.Player.Name") - OPTIMIZED RUST PARSING
    */
-  setStringInListItem(index: number, key: string, value: string): boolean;
+  getByPath(path: string): JsNbtTag | undefined;
   /**
-   * Get string value from list item compound by index and key
+   * Set string by path - OPTIMIZED RUST PARSING
    */
-  getStringFromListItem(index: number, key: string): string;
+  setStringByPath(path: string, value: string): boolean;
   /**
-   * Convert to JSON for JavaScript consumption
+   * Get string value by path - HIGH PERFORMANCE
    */
-  toJson(): any;
+  getStringPath(path: string): string | undefined;
+  /**
+   * Get number value by path - HIGH PERFORMANCE
+   */
+  getNumberPath(path: string): number | undefined;
   /**
    * Get tag type ID (matches TypeScript NbtType enum)
    */
@@ -187,9 +179,6 @@ export interface InitOutput {
   readonly jsnbttag_asNumber: (a: number) => number;
   readonly jsnbttag_asString: (a: number) => [number, number];
   readonly jsnbttag_get: (a: number, b: number, c: number) => number;
-  readonly jsnbttag_getString: (a: number, b: number, c: number) => [number, number];
-  readonly jsnbttag_getNumber: (a: number, b: number, c: number) => number;
-  readonly jsnbttag_getBool: (a: number, b: number, c: number) => number;
   readonly jsnbttag_isNumber: (a: number) => number;
   readonly jsnbttag_isString: (a: number) => number;
   readonly jsnbttag_isCompound: (a: number) => number;
@@ -198,23 +187,21 @@ export interface InitOutput {
   readonly jsnbttag_setString: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly jsnbttag_listLength: (a: number) => number;
   readonly jsnbttag_getListItem: (a: number, b: number) => number;
-  readonly jsnbttag_setStringInListItem: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-  readonly jsnbttag_getStringFromListItem: (a: number, b: number, c: number, d: number) => [number, number];
-  readonly jsnbttag_toJson: (a: number) => any;
+  readonly jsnbttag_getByPath: (a: number, b: number, c: number) => number;
+  readonly jsnbttag_setStringByPath: (a: number, b: number, c: number, d: number, e: number) => number;
+  readonly jsnbttag_getStringPath: (a: number, b: number, c: number) => [number, number];
+  readonly jsnbttag_getNumberPath: (a: number, b: number, c: number) => [number, number];
   readonly __wbg_jsnbtfile_free: (a: number, b: number) => void;
   readonly jsnbtfile_read: (a: number, b: number) => [number, number, number];
   readonly jsnbtfile_readFields: (a: number, b: number, c: number, d: number) => [number, number, number];
   readonly jsnbtfile_root: (a: number) => number;
-  readonly jsnbtfile_getRootMut: (a: number) => number;
-  readonly jsnbtfile_setRoot: (a: number, b: number) => void;
-  readonly jsnbtfile_setStringInListItem: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
-  readonly jsnbtfile_getStringFromListItem: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+  readonly jsnbtfile_getMultiplePaths: (a: number, b: number, c: number) => any;
   readonly jsnbtfile_name: (a: number) => [number, number];
   readonly jsnbtfile_compression: (a: number) => [number, number];
   readonly jsnbtfile_write: (a: number) => [number, number, number, number];
-  readonly jsnbtfile_fromSnbt: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number];
-  readonly parseSnbt: (a: number, b: number) => [number, number, number];
-  readonly formatSnbt: (a: number) => [number, number];
+  readonly jsnbtfile_setStringByPath: (a: number, b: number, c: number, d: number, e: number) => number;
+  readonly jsnbtfile_setNumberByPath: (a: number, b: number, c: number, d: number) => number;
+  readonly jsnbtfile_modifyListItem: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
   readonly __wbg_jsnbtregion_free: (a: number, b: number) => void;
   readonly jsnbtregion_read: (a: number, b: number) => [number, number, number];
   readonly jsnbtregion_new: () => number;
@@ -225,6 +212,9 @@ export interface InitOutput {
   readonly jsnbtregion_getChunk: (a: number, b: number, c: number) => [number, number, number];
   readonly detectCompression: (a: number, b: number) => [number, number];
   readonly getVersion: () => [number, number];
+  readonly parseSnbt: (a: number, b: number) => [number, number, number];
+  readonly formatSnbt: (a: number) => [number, number];
+  readonly formatSnbtPretty: (a: number) => [number, number];
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

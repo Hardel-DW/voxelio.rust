@@ -3,14 +3,19 @@ use wasm_bindgen::prelude::*;
 // Re-export core types
 use nbt_core::NbtTag;
 use nbt_compression::{NbtFile, CompressionFormat};
-use nbt_snbt::{parse_snbt, format_snbt};
 use nbt_region::Region;
+use nbt_snbt::{parse_snbt, format_snbt, format_snbt_pretty};
+use regex::Regex;
+use std::sync::OnceLock;
 
 /// Set panic hook for better debugging
 #[wasm_bindgen(start)]
 pub fn main() {
     console_error_panic_hook::set_once();
 }
+
+// Regex for array access parsing "items[0]"
+static ARRAY_REGEX: OnceLock<Regex> = OnceLock::new();
 
 // ============================================================================
 // Core NBT Tag System
@@ -47,24 +52,6 @@ impl JsNbtTag {
     #[wasm_bindgen]
     pub fn get(&self, key: &str) -> Option<JsNbtTag> {
         self.inner.get(key).map(|tag| JsNbtTag { inner: tag.clone() })
-    }
-
-    /// Get string value by key
-    #[wasm_bindgen(js_name = getString)]
-    pub fn get_string(&self, key: &str) -> String {
-        self.inner.get_string(key).to_string()
-    }
-
-    /// Get number value by key
-    #[wasm_bindgen(js_name = getNumber)]
-    pub fn get_number(&self, key: &str) -> f64 {
-        self.inner.get_number(key)
-    }
-
-    /// Get boolean value by key
-    #[wasm_bindgen(js_name = getBool)]
-    pub fn get_bool(&self, key: &str) -> bool {
-        self.inner.get_bool(key)
     }
 
     /// Type checking
@@ -129,80 +116,79 @@ impl JsNbtTag {
         }
     }
 
-    /// Set string value in list item compound by index and key
-    #[wasm_bindgen(js_name = setStringInListItem)]
-    pub fn set_string_in_list_item(&mut self, index: u32, key: &str, value: &str) -> bool {
-        match &mut self.inner {
-            NbtTag::List { items, .. } => {
-                if let Some(NbtTag::Compound(map)) = items.get_mut(index as usize) {
-                    map.insert(key.to_string(), NbtTag::String(value.to_string()));
-                    true
-                } else {
-                    false
-                }
+    // ============================================================================
+    // NEW OPTIMIZED PATH OPERATIONS
+    // ============================================================================
+
+    /// Get tag by path (e.g., "Data.Player.Name") - OPTIMIZED RUST PARSING
+    #[wasm_bindgen(js_name = getByPath)]
+    pub fn get_by_path(&self, path: &str) -> Option<JsNbtTag> {
+        let regex = ARRAY_REGEX.get_or_init(|| {
+            Regex::new(r"^(.+)\[(\d+)\]$").unwrap()
+        });
+
+        let parts: Vec<&str> = path.split('.').collect();
+        let mut current = self.clone();
+
+        for part in parts {
+            // Handle array access: "items[0]"
+            if let Some(captures) = regex.captures(part) {
+                let key = captures.get(1)?.as_str();
+                let index: u32 = captures.get(2)?.as_str().parse().ok()?;
+                current = current.get(key)?;
+                current = current.get_list_item(index)?;
+            } else {
+                current = current.get(part)?;
             }
-            _ => false,
+        }
+
+        Some(current)
+    }
+
+    /// Set string by path - OPTIMIZED RUST PARSING
+    #[wasm_bindgen(js_name = setStringByPath)]
+    pub fn set_string_by_path(&mut self, path: &str, value: &str) -> bool {
+        let parts: Vec<&str> = path.split('.').collect();
+        if parts.is_empty() {
+            return false;
+        }
+
+        // Simple case: direct key
+        if parts.len() == 1 {
+            return self.set_string(parts[0], value);
+        }
+
+        // Find parent path
+        let parent_path = parts[..parts.len() - 1].join(".");
+        let key = parts[parts.len() - 1];
+
+        // Get parent tag
+        if let Some(mut parent) = self.get_by_path(&parent_path) {
+            parent.set_string(key, value)
+        } else {
+            false
         }
     }
 
-    /// Get string value from list item compound by index and key
-    #[wasm_bindgen(js_name = getStringFromListItem)]
-    pub fn get_string_from_list_item(&self, index: u32, key: &str) -> String {
-        match &self.inner {
-            NbtTag::List { items, .. } => {
-                if let Some(NbtTag::Compound(map)) = items.get(index as usize) {
-                    if let Some(NbtTag::String(value)) = map.get(key) {
-                        value.clone()
-                    } else {
-                        String::new()
-                    }
-                } else {
-                    String::new()
-                }
-            }
-            _ => String::new(),
+    /// Get string value by path - HIGH PERFORMANCE
+    #[wasm_bindgen(js_name = getStringPath)]
+    pub fn get_string_path(&self, path: &str) -> Option<String> {
+        let tag = self.get_by_path(path)?;
+        if tag.is_string() {
+            Some(tag.as_string())
+        } else {
+            None
         }
     }
 
-    /// Convert to JSON for JavaScript consumption
-    #[wasm_bindgen(js_name = toJson)]
-    pub fn to_json(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.serialize_to_json()).unwrap_or(JsValue::NULL)
-    }
-}
-
-impl JsNbtTag {
-    fn serialize_to_json(&self) -> serde_json::Value {
-        match &self.inner {
-            NbtTag::End => serde_json::Value::Null,
-            NbtTag::Byte(v) => serde_json::Value::Number((*v as i64).into()),
-            NbtTag::Short(v) => serde_json::Value::Number((*v as i64).into()),
-            NbtTag::Int(v) => serde_json::Value::Number((*v as i64).into()),
-            NbtTag::Long(v) => serde_json::Value::Number((*v).into()),
-            NbtTag::Float(v) => serde_json::Number::from_f64(*v as f64)
-                .map(serde_json::Value::Number)
-                .unwrap_or(serde_json::Value::Null),
-            NbtTag::Double(v) => serde_json::Number::from_f64(*v)
-                .map(serde_json::Value::Number)
-                .unwrap_or(serde_json::Value::Null),
-            NbtTag::String(s) => serde_json::Value::String(s.clone()),
-            NbtTag::ByteArray(arr) => serde_json::Value::Array(
-                arr.iter().map(|&v| serde_json::Value::Number((v as i64).into())).collect()
-            ),
-            NbtTag::IntArray(arr) => serde_json::Value::Array(
-                arr.iter().map(|&v| serde_json::Value::Number((v as i64).into())).collect()
-            ),
-            NbtTag::LongArray(arr) => serde_json::Value::Array(
-                arr.iter().map(|&v| serde_json::Value::Number(v.into())).collect()
-            ),
-            NbtTag::List { items, .. } => serde_json::Value::Array(
-                items.iter().map(|tag| JsNbtTag { inner: tag.clone() }.serialize_to_json()).collect()
-            ),
-            NbtTag::Compound(map) => serde_json::Value::Object(
-                map.iter().map(|(k, v)| {
-                    (k.clone(), JsNbtTag { inner: v.clone() }.serialize_to_json())
-                }).collect()
-            ),
+    /// Get number value by path - HIGH PERFORMANCE
+    #[wasm_bindgen(js_name = getNumberPath)]
+    pub fn get_number_path(&self, path: &str) -> Option<f64> {
+        let tag = self.get_by_path(path)?;
+        if tag.is_number() {
+            Some(tag.as_number())
+        } else {
+            None
         }
     }
 }
@@ -258,50 +244,30 @@ impl JsNbtFile {
     pub fn root(&self) -> JsNbtTag {
         JsNbtTag { inner: self.root.clone() }
     }
-    
-    /// Get mutable root tag (for editing)
-    #[wasm_bindgen(js_name = getRootMut)]
-    pub fn root_mut(&mut self) -> JsNbtTag {
-        JsNbtTag { inner: self.root.clone() }
-    }
-    
-    /// Update root from modified JsNbtTag
-    #[wasm_bindgen(js_name = setRoot)]
-    pub fn set_root(&mut self, new_root: JsNbtTag) {
-        self.root = new_root.inner;
-    }
-    
-    /// Direct edit methods to avoid copy issues - using same logic as Rust example
-    #[wasm_bindgen(js_name = setStringInListItem)]
-    pub fn set_string_in_list_item(&mut self, path: &str, index: u32, key: &str, value: &str) -> bool {
-        // Same logic as the working Rust example
-        if let NbtTag::Compound(root_map) = &mut self.root {
-            if let Some(NbtTag::List { items, .. }) = root_map.get_mut(path) {
-                if let Some(NbtTag::Compound(item_map)) = items.get_mut(index as usize) {
-                    if let Some(NbtTag::String(name)) = item_map.get_mut(key) {
-                        *name = value.to_string();
-                        return true;
-                    }
+
+    // ============================================================================
+    // NEW BATCH OPERATIONS - HIGH PERFORMANCE
+    // ============================================================================
+
+    /// Process multiple paths in one call - avoids WASM round-trips
+    #[wasm_bindgen(js_name = getMultiplePaths)]
+    pub fn get_multiple_paths(&self, paths: &str) -> JsValue {
+        let path_list: Vec<&str> = paths.split(',').collect();
+        let mut results = std::collections::HashMap::new();
+        let root = JsNbtTag { inner: self.root.clone() };
+        
+        for path in path_list {
+            let trimmed_path = path.trim();
+            if let Some(tag) = root.get_by_path(trimmed_path) {
+                if tag.is_string() {
+                    results.insert(trimmed_path, tag.as_string());
+                } else if tag.is_number() {
+                    results.insert(trimmed_path, tag.as_number().to_string());
                 }
             }
         }
-        false
-    }
-    
-    /// Get string from list item
-    #[wasm_bindgen(js_name = getStringFromListItem)]
-    pub fn get_string_from_list_item(&self, path: &str, index: u32, key: &str) -> String {
-        // Same logic as the working Rust example
-        if let NbtTag::Compound(root_map) = &self.root {
-            if let Some(NbtTag::List { items, .. }) = root_map.get(path) {
-                if let Some(NbtTag::Compound(item_map)) = items.get(index as usize) {
-                    if let Some(NbtTag::String(name)) = item_map.get(key) {
-                        return name.clone();
-                    }
-                }
-            }
-        }
-        String::new()
+        
+        serde_wasm_bindgen::to_value(&results).unwrap_or(JsValue::NULL)
     }
 
     /// Get file name
@@ -333,44 +299,189 @@ impl JsNbtFile {
             .map_err(|e| js_error(&format!("Failed to write NBT: {}", e)))
     }
 
-    /// Create a new NBT file from SNBT string
-    #[wasm_bindgen(js_name = fromSnbt)]
-    pub fn from_snbt(snbt: &str, name: &str, compression: &str) -> Result<JsNbtFile, JsError> {
-        let root = parse_snbt(snbt)
-            .map_err(|e| js_error(&format!("Failed to parse SNBT: {}", e)))?;
-            
-        let compression_format = match compression {
-            "gzip" => CompressionFormat::Gzip,
-            "zlib" => CompressionFormat::Zlib,
-            "none" => CompressionFormat::None,
-            _ => CompressionFormat::Gzip, // default
-        };
+    // ============================================================================
+    // DIRECT MODIFICATION METHODS - Work on internal root to persist changes
+    // ============================================================================
+
+    /// Set string value by path - DIRECTLY modifies the internal root
+    #[wasm_bindgen(js_name = setStringByPath)]
+    pub fn set_string_by_path(&mut self, path: &str, value: &str) -> bool {
+        let regex = ARRAY_REGEX.get_or_init(|| {
+            Regex::new(r"^(.+)\[(\d+)\]$").unwrap()
+        });
+
+        let parts: Vec<&str> = path.split('.').collect();
+        if parts.is_empty() {
+            return false;
+        }
+
+        // Navigate to the parent and modify directly
+        let mut current = &mut self.root;
         
-        Ok(JsNbtFile {
-            root,
-            name: name.to_string(),
-            compression: compression_format,
-        })
+        // Navigate through all but the last part
+        for part in &parts[..parts.len() - 1] {
+            // Handle array access: "items[0]"
+            if let Some(captures) = regex.captures(part) {
+                if let (Some(key_match), Some(index_match)) = (captures.get(1), captures.get(2)) {
+                    let key = key_match.as_str();
+                    if let Ok(index) = index_match.as_str().parse::<usize>() {
+                        // Get the compound first
+                        if let Some(map) = current.as_compound_mut() {
+                            if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
+                                if let Some(item) = items.get_mut(index) {
+                                    current = item;
+                                } else {
+                                    return false;
+                                }
+                            } else {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            } else {
+                // Regular key access
+                if let Some(map) = current.as_compound_mut() {
+                    if let Some(item) = map.get_mut(&part.to_string()) {
+                        current = item;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        // Handle the final part
+        let final_part = parts[parts.len() - 1];
+        if let Some(captures) = regex.captures(final_part) {
+            if let (Some(key_match), Some(index_match)) = (captures.get(1), captures.get(2)) {
+                let key = key_match.as_str();
+                if let Ok(index) = index_match.as_str().parse::<usize>() {
+                    if let Some(map) = current.as_compound_mut() {
+                        if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
+                            if let Some(item) = items.get_mut(index) {
+                                *item = NbtTag::String(value.to_string());
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Regular key modification
+            if let Some(map) = current.as_compound_mut() {
+                map.insert(final_part.to_string(), NbtTag::String(value.to_string()));
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Set number value by path - DIRECTLY modifies the internal root
+    #[wasm_bindgen(js_name = setNumberByPath)]
+    pub fn set_number_by_path(&mut self, path: &str, value: f64) -> bool {
+        let regex = ARRAY_REGEX.get_or_init(|| {
+            Regex::new(r"^(.+)\[(\d+)\]$").unwrap()
+        });
+
+        let parts: Vec<&str> = path.split('.').collect();
+        if parts.is_empty() {
+            return false;
+        }
+
+        // Navigate to the parent and modify directly
+        let mut current = &mut self.root;
+        
+        // Navigate through all but the last part
+        for part in &parts[..parts.len() - 1] {
+            if let Some(captures) = regex.captures(part) {
+                if let (Some(key_match), Some(index_match)) = (captures.get(1), captures.get(2)) {
+                    let key = key_match.as_str();
+                    if let Ok(index) = index_match.as_str().parse::<usize>() {
+                        if let Some(map) = current.as_compound_mut() {
+                            if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
+                                if let Some(item) = items.get_mut(index) {
+                                    current = item;
+                                } else {
+                                    return false;
+                                }
+                            } else {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            } else {
+                if let Some(map) = current.as_compound_mut() {
+                    if let Some(item) = map.get_mut(&part.to_string()) {
+                        current = item;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        // Handle the final part
+        let final_part = parts[parts.len() - 1];
+        if let Some(captures) = regex.captures(final_part) {
+            if let (Some(key_match), Some(index_match)) = (captures.get(1), captures.get(2)) {
+                let key = key_match.as_str();
+                if let Ok(index) = index_match.as_str().parse::<usize>() {
+                    if let Some(map) = current.as_compound_mut() {
+                        if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
+                            if let Some(item) = items.get_mut(index) {
+                                *item = NbtTag::Double(value);
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if let Some(map) = current.as_compound_mut() {
+                map.insert(final_part.to_string(), NbtTag::Double(value));
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Modify list item by path and index - for compound modifications
+    #[wasm_bindgen(js_name = modifyListItem)]
+    pub fn modify_list_item(&mut self, list_path: &str, index: u32, key: &str, value: &str) -> bool {
+        if let Some(root_map) = self.root.as_compound_mut() {
+            if let Some(NbtTag::List { items, .. }) = root_map.get_mut(list_path) {
+                if let Some(item) = items.get_mut(index as usize) {
+                    if let Some(item_map) = item.as_compound_mut() {
+                        item_map.insert(key.to_string(), NbtTag::String(value.to_string()));
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 }
 
-// ============================================================================
-// SNBT Parser
-// ============================================================================
-
-/// Parse SNBT string to NBT tag
-#[wasm_bindgen(js_name = parseSnbt)]
-pub fn parse_snbt_js(input: &str) -> Result<JsNbtTag, JsError> {
-    let tag = parse_snbt(input)
-        .map_err(|e| js_error(&format!("SNBT parse error: {}", e)))?;
-    Ok(JsNbtTag { inner: tag })
-}
-
-/// Format NBT tag to SNBT string
-#[wasm_bindgen(js_name = formatSnbt)]
-pub fn format_snbt_js(tag: &JsNbtTag) -> String {
-    format_snbt(&tag.inner)
-}
 
 // ============================================================================
 // Region File Support
@@ -469,6 +580,30 @@ pub fn detect_compression(data: &[u8]) -> String {
 #[wasm_bindgen(js_name = getVersion)]
 pub fn get_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+// ============================================================================
+// SNBT Support
+// ============================================================================
+
+/// Parse SNBT string to NBT tag
+#[wasm_bindgen(js_name = parseSnbt)]
+pub fn parse_snbt_wasm(input: &str) -> Result<JsNbtTag, JsError> {
+    let tag = parse_snbt(input)
+        .map_err(|e| js_error(&format!("SNBT parse error: {}", e)))?;
+    Ok(JsNbtTag { inner: tag })
+}
+
+/// Format NBT tag to SNBT string
+#[wasm_bindgen(js_name = formatSnbt)]
+pub fn format_snbt_wasm(tag: &JsNbtTag) -> String {
+    format_snbt(&tag.inner)
+}
+
+/// Format NBT tag to pretty SNBT string with indentation
+#[wasm_bindgen(js_name = formatSnbtPretty)]
+pub fn format_snbt_pretty_wasm(tag: &JsNbtTag) -> String {
+    format_snbt_pretty(&tag.inner)
 }
 
 // ============================================================================

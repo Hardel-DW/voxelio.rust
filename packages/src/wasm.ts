@@ -1,11 +1,14 @@
-import init from './nbt_wasm';
+import init, { initSync } from './nbt_wasm';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 let wasmInitialized = false;
 let initPromise: Promise<void> | null = null;
 
 /**
  * Initialize NBT WASM module
- * Safe to call multiple times
+ * Safe to call multiple times - detects Node.js vs Browser
  */
 export default async function initNbt(): Promise<void> {
     if (wasmInitialized) return;
@@ -17,7 +20,18 @@ export default async function initNbt(): Promise<void> {
 
     initPromise = (async () => {
         try {
-            await init();
+            // Detect Node.js environment
+            if (typeof window === 'undefined' && typeof global !== 'undefined') {
+                // Node.js - use synchronous init with readFileSync
+                const currentFile = import.meta.url;
+                const currentDir = dirname(fileURLToPath(currentFile));
+                const wasmPath = join(currentDir, 'nbt_wasm_bg.wasm');
+                const wasmBytes = readFileSync(wasmPath);
+                initSync(wasmBytes);
+            } else {
+                // Browser - use async init with fetch
+                await init();
+            }
             wasmInitialized = true;
         } catch (error) {
             initPromise = null; // Reset pour retry

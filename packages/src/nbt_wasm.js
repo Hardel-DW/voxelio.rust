@@ -113,48 +113,9 @@ function takeFromExternrefTable0(idx) {
     return value;
 }
 
-function _assertClass(instance, klass) {
-    if (!(instance instanceof klass)) {
-        throw new Error(`expected instance of ${klass.name}`);
-    }
-}
-
 function getArrayU8FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
-}
-/**
- * Parse SNBT string to NBT tag
- * @param {string} input
- * @returns {JsNbtTag}
- */
-export function parseSnbt(input) {
-    const ptr0 = passStringToWasm0(input, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.parseSnbt(ptr0, len0);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return JsNbtTag.__wrap(ret[0]);
-}
-
-/**
- * Format NBT tag to SNBT string
- * @param {JsNbtTag} tag
- * @returns {string}
- */
-export function formatSnbt(tag) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        _assertClass(tag, JsNbtTag);
-        const ret = wasm.formatSnbt(tag.__wbg_ptr);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
 }
 
 let cachedInt32ArrayMemory0 = null;
@@ -199,6 +160,64 @@ export function getVersion() {
     let deferred1_1;
     try {
         const ret = wasm.getVersion();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * Parse SNBT string to NBT tag
+ * @param {string} input
+ * @returns {JsNbtTag}
+ */
+export function parseSnbt(input) {
+    const ptr0 = passStringToWasm0(input, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.parseSnbt(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return JsNbtTag.__wrap(ret[0]);
+}
+
+function _assertClass(instance, klass) {
+    if (!(instance instanceof klass)) {
+        throw new Error(`expected instance of ${klass.name}`);
+    }
+}
+/**
+ * Format NBT tag to SNBT string
+ * @param {JsNbtTag} tag
+ * @returns {string}
+ */
+export function formatSnbt(tag) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        _assertClass(tag, JsNbtTag);
+        const ret = wasm.formatSnbt(tag.__wbg_ptr);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * Format NBT tag to pretty SNBT string with indentation
+ * @param {JsNbtTag} tag
+ * @returns {string}
+ */
+export function formatSnbtPretty(tag) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        _assertClass(tag, JsNbtTag);
+        const ret = wasm.formatSnbtPretty(tag.__wbg_ptr);
         deferred1_0 = ret[0];
         deferred1_1 = ret[1];
         return getStringFromWasm0(ret[0], ret[1]);
@@ -274,62 +293,15 @@ export class JsNbtFile {
         return JsNbtTag.__wrap(ret);
     }
     /**
-     * Get mutable root tag (for editing)
-     * @returns {JsNbtTag}
+     * Process multiple paths in one call - avoids WASM round-trips
+     * @param {string} paths
+     * @returns {any}
      */
-    getRootMut() {
-        const ret = wasm.jsnbtfile_getRootMut(this.__wbg_ptr);
-        return JsNbtTag.__wrap(ret);
-    }
-    /**
-     * Update root from modified JsNbtTag
-     * @param {JsNbtTag} new_root
-     */
-    setRoot(new_root) {
-        _assertClass(new_root, JsNbtTag);
-        var ptr0 = new_root.__destroy_into_raw();
-        wasm.jsnbtfile_setRoot(this.__wbg_ptr, ptr0);
-    }
-    /**
-     * Direct edit methods to avoid copy issues - using same logic as Rust example
-     * @param {string} path
-     * @param {number} index
-     * @param {string} key
-     * @param {string} value
-     * @returns {boolean}
-     */
-    setStringInListItem(path, index, key, value) {
-        const ptr0 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    getMultiplePaths(paths) {
+        const ptr0 = passStringToWasm0(paths, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len2 = WASM_VECTOR_LEN;
-        const ret = wasm.jsnbtfile_setStringInListItem(this.__wbg_ptr, ptr0, len0, index, ptr1, len1, ptr2, len2);
-        return ret !== 0;
-    }
-    /**
-     * Get string from list item
-     * @param {string} path
-     * @param {number} index
-     * @param {string} key
-     * @returns {string}
-     */
-    getStringFromListItem(path, index, key) {
-        let deferred3_0;
-        let deferred3_1;
-        try {
-            const ptr0 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-            const len0 = WASM_VECTOR_LEN;
-            const ptr1 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-            const len1 = WASM_VECTOR_LEN;
-            const ret = wasm.jsnbtfile_getStringFromListItem(this.__wbg_ptr, ptr0, len0, index, ptr1, len1);
-            deferred3_0 = ret[0];
-            deferred3_1 = ret[1];
-            return getStringFromWasm0(ret[0], ret[1]);
-        } finally {
-            wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
-        }
+        const ret = wasm.jsnbtfile_getMultiplePaths(this.__wbg_ptr, ptr0, len0);
+        return ret;
     }
     /**
      * Get file name
@@ -377,24 +349,48 @@ export class JsNbtFile {
         return v1;
     }
     /**
-     * Create a new NBT file from SNBT string
-     * @param {string} snbt
-     * @param {string} name
-     * @param {string} compression
-     * @returns {JsNbtFile}
+     * Set string value by path - DIRECTLY modifies the internal root
+     * @param {string} path
+     * @param {string} value
+     * @returns {boolean}
      */
-    static fromSnbt(snbt, name, compression) {
-        const ptr0 = passStringToWasm0(snbt, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    setStringByPath(path, value) {
+        const ptr0 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr1 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(compression, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ret = wasm.jsnbtfile_setStringByPath(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return ret !== 0;
+    }
+    /**
+     * Set number value by path - DIRECTLY modifies the internal root
+     * @param {string} path
+     * @param {number} value
+     * @returns {boolean}
+     */
+    setNumberByPath(path, value) {
+        const ptr0 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.jsnbtfile_setNumberByPath(this.__wbg_ptr, ptr0, len0, value);
+        return ret !== 0;
+    }
+    /**
+     * Modify list item by path and index - for compound modifications
+     * @param {string} list_path
+     * @param {number} index
+     * @param {string} key
+     * @param {string} value
+     * @returns {boolean}
+     */
+    modifyListItem(list_path, index, key, value) {
+        const ptr0 = passStringToWasm0(list_path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len2 = WASM_VECTOR_LEN;
-        const ret = wasm.jsnbtfile_fromSnbt(ptr0, len0, ptr1, len1, ptr2, len2);
-        if (ret[2]) {
-            throw takeFromExternrefTable0(ret[1]);
-        }
-        return JsNbtFile.__wrap(ret[0]);
+        const ret = wasm.jsnbtfile_modifyListItem(this.__wbg_ptr, ptr0, len0, index, ptr1, len1, ptr2, len2);
+        return ret !== 0;
     }
 }
 
@@ -572,47 +568,6 @@ export class JsNbtTag {
         return ret === 0 ? undefined : JsNbtTag.__wrap(ret);
     }
     /**
-     * Get string value by key
-     * @param {string} key
-     * @returns {string}
-     */
-    getString(key) {
-        let deferred2_0;
-        let deferred2_1;
-        try {
-            const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-            const len0 = WASM_VECTOR_LEN;
-            const ret = wasm.jsnbttag_getString(this.__wbg_ptr, ptr0, len0);
-            deferred2_0 = ret[0];
-            deferred2_1 = ret[1];
-            return getStringFromWasm0(ret[0], ret[1]);
-        } finally {
-            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-        }
-    }
-    /**
-     * Get number value by key
-     * @param {string} key
-     * @returns {number}
-     */
-    getNumber(key) {
-        const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.jsnbttag_getNumber(this.__wbg_ptr, ptr0, len0);
-        return ret;
-    }
-    /**
-     * Get boolean value by key
-     * @param {string} key
-     * @returns {boolean}
-     */
-    getBool(key) {
-        const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.jsnbttag_getBool(this.__wbg_ptr, ptr0, len0);
-        return ret !== 0;
-    }
-    /**
      * Type checking
      * @returns {boolean}
      */
@@ -683,47 +638,56 @@ export class JsNbtTag {
         return ret === 0 ? undefined : JsNbtTag.__wrap(ret);
     }
     /**
-     * Set string value in list item compound by index and key
-     * @param {number} index
-     * @param {string} key
+     * Get tag by path (e.g., "Data.Player.Name") - OPTIMIZED RUST PARSING
+     * @param {string} path
+     * @returns {JsNbtTag | undefined}
+     */
+    getByPath(path) {
+        const ptr0 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.jsnbttag_getByPath(this.__wbg_ptr, ptr0, len0);
+        return ret === 0 ? undefined : JsNbtTag.__wrap(ret);
+    }
+    /**
+     * Set string by path - OPTIMIZED RUST PARSING
+     * @param {string} path
      * @param {string} value
      * @returns {boolean}
      */
-    setStringInListItem(index, key, value) {
-        const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    setStringByPath(path, value) {
+        const ptr0 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.jsnbttag_setStringInListItem(this.__wbg_ptr, index, ptr0, len0, ptr1, len1);
+        const ret = wasm.jsnbttag_setStringByPath(this.__wbg_ptr, ptr0, len0, ptr1, len1);
         return ret !== 0;
     }
     /**
-     * Get string value from list item compound by index and key
-     * @param {number} index
-     * @param {string} key
-     * @returns {string}
+     * Get string value by path - HIGH PERFORMANCE
+     * @param {string} path
+     * @returns {string | undefined}
      */
-    getStringFromListItem(index, key) {
-        let deferred2_0;
-        let deferred2_1;
-        try {
-            const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-            const len0 = WASM_VECTOR_LEN;
-            const ret = wasm.jsnbttag_getStringFromListItem(this.__wbg_ptr, index, ptr0, len0);
-            deferred2_0 = ret[0];
-            deferred2_1 = ret[1];
-            return getStringFromWasm0(ret[0], ret[1]);
-        } finally {
-            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    getStringPath(path) {
+        const ptr0 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.jsnbttag_getStringPath(this.__wbg_ptr, ptr0, len0);
+        let v2;
+        if (ret[0] !== 0) {
+            v2 = getStringFromWasm0(ret[0], ret[1]).slice();
+            wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
         }
+        return v2;
     }
     /**
-     * Convert to JSON for JavaScript consumption
-     * @returns {any}
+     * Get number value by path - HIGH PERFORMANCE
+     * @param {string} path
+     * @returns {number | undefined}
      */
-    toJson() {
-        const ret = wasm.jsnbttag_toJson(this.__wbg_ptr);
-        return ret;
+    getNumberPath(path) {
+        const ptr0 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.jsnbttag_getNumberPath(this.__wbg_ptr, ptr0, len0);
+        return ret[0] === 0 ? undefined : ret[1];
     }
 }
 
@@ -772,27 +736,13 @@ function __wbg_get_imports() {
             wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
         }
     };
-    imports.wbg.__wbg_new_405e22f390576ce2 = function() {
-        const ret = new Object();
-        return ret;
-    };
     imports.wbg.__wbg_new_5e0be73521bc8c17 = function() {
         const ret = new Map();
-        return ret;
-    };
-    imports.wbg.__wbg_new_78feb108b6472713 = function() {
-        const ret = new Array();
         return ret;
     };
     imports.wbg.__wbg_new_8a6f238a6ece86ea = function() {
         const ret = new Error();
         return ret;
-    };
-    imports.wbg.__wbg_set_37837023f3d740e8 = function(arg0, arg1, arg2) {
-        arg0[arg1 >>> 0] = arg2;
-    };
-    imports.wbg.__wbg_set_3f1d0b984ed272ed = function(arg0, arg1, arg2) {
-        arg0[arg1] = arg2;
     };
     imports.wbg.__wbg_set_8fc6bf8a5b1071d1 = function(arg0, arg1, arg2) {
         const ret = arg0.set(arg1, arg2);
@@ -805,18 +755,6 @@ function __wbg_get_imports() {
         getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
         getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
     };
-    imports.wbg.__wbindgen_bigint_from_i64 = function(arg0) {
-        const ret = arg0;
-        return ret;
-    };
-    imports.wbg.__wbindgen_bigint_from_u64 = function(arg0) {
-        const ret = BigInt.asUintN(64, arg0);
-        return ret;
-    };
-    imports.wbg.__wbindgen_error_new = function(arg0, arg1) {
-        const ret = new Error(getStringFromWasm0(arg0, arg1));
-        return ret;
-    };
     imports.wbg.__wbindgen_init_externref_table = function() {
         const table = wasm.__wbindgen_export_3;
         const offset = table.grow(4);
@@ -826,14 +764,6 @@ function __wbg_get_imports() {
         table.set(offset + 2, true);
         table.set(offset + 3, false);
         ;
-    };
-    imports.wbg.__wbindgen_is_string = function(arg0) {
-        const ret = typeof(arg0) === 'string';
-        return ret;
-    };
-    imports.wbg.__wbindgen_number_new = function(arg0) {
-        const ret = arg0;
-        return ret;
     };
     imports.wbg.__wbindgen_string_new = function(arg0, arg1) {
         const ret = getStringFromWasm0(arg0, arg1);
