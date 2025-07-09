@@ -30,10 +30,12 @@ js-sys = "0.3"
 web-sys = "0.3"
 
 [profile.release]
-# Optimisation max pour performance
-lto = true
-codegen-units = 1
-panic = "abort"
+# Optimisation max pour taille WASM
+opt-level = "s"        # Size optimization
+lto = true             # Link-time optimization
+codegen-units = 1      # Single codegen unit
+panic = "abort"        # Smaller panic handling
+strip = true           # Strip debug symbols
 
 [profile.bench]
 # Benchmarks précis

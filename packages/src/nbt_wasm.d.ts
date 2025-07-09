@@ -1,7 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Set panic hook for better debugging
+ * Set panic hook for better debugging  
  */
 export function main(): void;
 /**
@@ -177,50 +177,48 @@ export interface InitOutput {
   readonly __wbg_jsnbttag_free: (a: number, b: number) => void;
   readonly jsnbttag_typeId: (a: number) => number;
   readonly jsnbttag_asNumber: (a: number) => number;
-  readonly jsnbttag_asString: (a: number) => [number, number];
+  readonly jsnbttag_asString: (a: number, b: number) => void;
   readonly jsnbttag_get: (a: number, b: number, c: number) => number;
   readonly jsnbttag_isNumber: (a: number) => number;
   readonly jsnbttag_isString: (a: number) => number;
   readonly jsnbttag_isCompound: (a: number) => number;
   readonly jsnbttag_isList: (a: number) => number;
-  readonly jsnbttag_keys: (a: number) => [number, number];
+  readonly jsnbttag_keys: (a: number, b: number) => void;
   readonly jsnbttag_setString: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly jsnbttag_listLength: (a: number) => number;
   readonly jsnbttag_getListItem: (a: number, b: number) => number;
   readonly jsnbttag_getByPath: (a: number, b: number, c: number) => number;
   readonly jsnbttag_setStringByPath: (a: number, b: number, c: number, d: number, e: number) => number;
-  readonly jsnbttag_getStringPath: (a: number, b: number, c: number) => [number, number];
-  readonly jsnbttag_getNumberPath: (a: number, b: number, c: number) => [number, number];
+  readonly jsnbttag_getStringPath: (a: number, b: number, c: number, d: number) => void;
+  readonly jsnbttag_getNumberPath: (a: number, b: number, c: number, d: number) => void;
   readonly __wbg_jsnbtfile_free: (a: number, b: number) => void;
-  readonly jsnbtfile_read: (a: number, b: number) => [number, number, number];
-  readonly jsnbtfile_readFields: (a: number, b: number, c: number, d: number) => [number, number, number];
+  readonly jsnbtfile_read: (a: number, b: number, c: number) => void;
+  readonly jsnbtfile_readFields: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly jsnbtfile_root: (a: number) => number;
-  readonly jsnbtfile_getMultiplePaths: (a: number, b: number, c: number) => any;
-  readonly jsnbtfile_name: (a: number) => [number, number];
-  readonly jsnbtfile_compression: (a: number) => [number, number];
-  readonly jsnbtfile_write: (a: number) => [number, number, number, number];
+  readonly jsnbtfile_getMultiplePaths: (a: number, b: number, c: number) => number;
+  readonly jsnbtfile_name: (a: number, b: number) => void;
+  readonly jsnbtfile_compression: (a: number, b: number) => void;
+  readonly jsnbtfile_write: (a: number, b: number) => void;
   readonly jsnbtfile_setStringByPath: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly jsnbtfile_setNumberByPath: (a: number, b: number, c: number, d: number) => number;
   readonly jsnbtfile_modifyListItem: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
   readonly __wbg_jsnbtregion_free: (a: number, b: number) => void;
-  readonly jsnbtregion_read: (a: number, b: number) => [number, number, number];
+  readonly jsnbtregion_read: (a: number, b: number, c: number) => void;
   readonly jsnbtregion_new: () => number;
-  readonly jsnbtregion_write: (a: number) => [number, number, number, number];
+  readonly jsnbtregion_write: (a: number, b: number) => void;
   readonly jsnbtregion_chunkCount: (a: number) => number;
   readonly jsnbtregion_isEmpty: (a: number) => number;
-  readonly jsnbtregion_getChunkPositions: (a: number) => [number, number];
-  readonly jsnbtregion_getChunk: (a: number, b: number, c: number) => [number, number, number];
-  readonly detectCompression: (a: number, b: number) => [number, number];
-  readonly getVersion: () => [number, number];
-  readonly parseSnbt: (a: number, b: number) => [number, number, number];
-  readonly formatSnbt: (a: number) => [number, number];
-  readonly formatSnbtPretty: (a: number) => [number, number];
-  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_malloc: (a: number, b: number) => number;
-  readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
-  readonly __wbindgen_export_3: WebAssembly.Table;
-  readonly __externref_drop_slice: (a: number, b: number) => void;
-  readonly __externref_table_dealloc: (a: number) => void;
+  readonly jsnbtregion_getChunkPositions: (a: number, b: number) => void;
+  readonly jsnbtregion_getChunk: (a: number, b: number, c: number, d: number) => void;
+  readonly detectCompression: (a: number, b: number, c: number) => void;
+  readonly getVersion: (a: number) => void;
+  readonly parseSnbt: (a: number, b: number, c: number) => void;
+  readonly formatSnbt: (a: number, b: number) => void;
+  readonly formatSnbtPretty: (a: number, b: number) => void;
+  readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
+  readonly __wbindgen_export_0: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_export_1: (a: number, b: number) => number;
+  readonly __wbindgen_export_2: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_start: () => void;
 }
 

@@ -5,17 +5,27 @@ use nbt_core::NbtTag;
 use nbt_compression::{NbtFile, CompressionFormat};
 use nbt_region::Region;
 use nbt_snbt::{parse_snbt, format_snbt, format_snbt_pretty};
-use regex::Regex;
-use std::sync::OnceLock;
 
-/// Set panic hook for better debugging
+/// Set panic hook for better debugging  
 #[wasm_bindgen(start)]
 pub fn main() {
+    #[cfg(feature = "debug")]
     console_error_panic_hook::set_once();
 }
 
-// Regex for array access parsing "items[0]"
-static ARRAY_REGEX: OnceLock<Regex> = OnceLock::new();
+// Manual array access parsing - replaces heavy regex dependency  
+fn parse_array_access(part: &str) -> Option<(&str, u32)> {
+    if let Some(bracket_start) = part.rfind('[') {
+        if part.ends_with(']') {
+            let key = &part[..bracket_start];
+            let index_str = &part[bracket_start + 1..part.len() - 1];
+            if let Ok(index) = index_str.parse::<u32>() {
+                return Some((key, index));
+            }
+        }
+    }
+    None
+}
 
 // ============================================================================
 // Core NBT Tag System
@@ -123,18 +133,12 @@ impl JsNbtTag {
     /// Get tag by path (e.g., "Data.Player.Name") - OPTIMIZED RUST PARSING
     #[wasm_bindgen(js_name = getByPath)]
     pub fn get_by_path(&self, path: &str) -> Option<JsNbtTag> {
-        let regex = ARRAY_REGEX.get_or_init(|| {
-            Regex::new(r"^(.+)\[(\d+)\]$").unwrap()
-        });
-
         let parts: Vec<&str> = path.split('.').collect();
         let mut current = self.clone();
 
         for part in parts {
             // Handle array access: "items[0]"
-            if let Some(captures) = regex.captures(part) {
-                let key = captures.get(1)?.as_str();
-                let index: u32 = captures.get(2)?.as_str().parse().ok()?;
+            if let Some((key, index)) = parse_array_access(part) {
                 current = current.get(key)?;
                 current = current.get_list_item(index)?;
             } else {
@@ -306,10 +310,6 @@ impl JsNbtFile {
     /// Set string value by path - DIRECTLY modifies the internal root
     #[wasm_bindgen(js_name = setStringByPath)]
     pub fn set_string_by_path(&mut self, path: &str, value: &str) -> bool {
-        let regex = ARRAY_REGEX.get_or_init(|| {
-            Regex::new(r"^(.+)\[(\d+)\]$").unwrap()
-        });
-
         let parts: Vec<&str> = path.split('.').collect();
         if parts.is_empty() {
             return false;
@@ -321,21 +321,13 @@ impl JsNbtFile {
         // Navigate through all but the last part
         for part in &parts[..parts.len() - 1] {
             // Handle array access: "items[0]"
-            if let Some(captures) = regex.captures(part) {
-                if let (Some(key_match), Some(index_match)) = (captures.get(1), captures.get(2)) {
-                    let key = key_match.as_str();
-                    if let Ok(index) = index_match.as_str().parse::<usize>() {
-                        // Get the compound first
-                        if let Some(map) = current.as_compound_mut() {
-                            if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
-                                if let Some(item) = items.get_mut(index) {
-                                    current = item;
-                                } else {
-                                    return false;
-                                }
-                            } else {
-                                return false;
-                            }
+            if let Some((key, index)) = parse_array_access(part) {
+                let index = index as usize;
+                // Get the compound first
+                if let Some(map) = current.as_compound_mut() {
+                    if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
+                        if let Some(item) = items.get_mut(index) {
+                            current = item;
                         } else {
                             return false;
                         }
@@ -361,17 +353,13 @@ impl JsNbtFile {
 
         // Handle the final part
         let final_part = parts[parts.len() - 1];
-        if let Some(captures) = regex.captures(final_part) {
-            if let (Some(key_match), Some(index_match)) = (captures.get(1), captures.get(2)) {
-                let key = key_match.as_str();
-                if let Ok(index) = index_match.as_str().parse::<usize>() {
-                    if let Some(map) = current.as_compound_mut() {
-                        if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
-                            if let Some(item) = items.get_mut(index) {
-                                *item = NbtTag::String(value.to_string());
-                                return true;
-                            }
-                        }
+        if let Some((key, index)) = parse_array_access(final_part) {
+            let index = index as usize;
+            if let Some(map) = current.as_compound_mut() {
+                if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
+                    if let Some(item) = items.get_mut(index) {
+                        *item = NbtTag::String(value.to_string());
+                        return true;
                     }
                 }
             }
@@ -389,10 +377,6 @@ impl JsNbtFile {
     /// Set number value by path - DIRECTLY modifies the internal root
     #[wasm_bindgen(js_name = setNumberByPath)]
     pub fn set_number_by_path(&mut self, path: &str, value: f64) -> bool {
-        let regex = ARRAY_REGEX.get_or_init(|| {
-            Regex::new(r"^(.+)\[(\d+)\]$").unwrap()
-        });
-
         let parts: Vec<&str> = path.split('.').collect();
         if parts.is_empty() {
             return false;
@@ -403,20 +387,12 @@ impl JsNbtFile {
         
         // Navigate through all but the last part
         for part in &parts[..parts.len() - 1] {
-            if let Some(captures) = regex.captures(part) {
-                if let (Some(key_match), Some(index_match)) = (captures.get(1), captures.get(2)) {
-                    let key = key_match.as_str();
-                    if let Ok(index) = index_match.as_str().parse::<usize>() {
-                        if let Some(map) = current.as_compound_mut() {
-                            if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
-                                if let Some(item) = items.get_mut(index) {
-                                    current = item;
-                                } else {
-                                    return false;
-                                }
-                            } else {
-                                return false;
-                            }
+            if let Some((key, index)) = parse_array_access(part) {
+                let index = index as usize;
+                if let Some(map) = current.as_compound_mut() {
+                    if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
+                        if let Some(item) = items.get_mut(index) {
+                            current = item;
                         } else {
                             return false;
                         }
@@ -441,17 +417,13 @@ impl JsNbtFile {
 
         // Handle the final part
         let final_part = parts[parts.len() - 1];
-        if let Some(captures) = regex.captures(final_part) {
-            if let (Some(key_match), Some(index_match)) = (captures.get(1), captures.get(2)) {
-                let key = key_match.as_str();
-                if let Ok(index) = index_match.as_str().parse::<usize>() {
-                    if let Some(map) = current.as_compound_mut() {
-                        if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
-                            if let Some(item) = items.get_mut(index) {
-                                *item = NbtTag::Double(value);
-                                return true;
-                            }
-                        }
+        if let Some((key, index)) = parse_array_access(final_part) {
+            let index = index as usize;
+            if let Some(map) = current.as_compound_mut() {
+                if let Some(NbtTag::List { items, .. }) = map.get_mut(&key.to_string()) {
+                    if let Some(item) = items.get_mut(index) {
+                        *item = NbtTag::Double(value);
+                        return true;
                     }
                 }
             }

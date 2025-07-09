@@ -1,5 +1,7 @@
 use nbt_core::{NbtReader, NbtTag, Endian};
+#[cfg(feature = "compression")]
 use flate2::read::GzDecoder;
+#[cfg(feature = "compression")]
 use std::io::Read;
 use thiserror::Error;
 
@@ -30,18 +32,24 @@ pub enum CompressionFormat {
 fn decompress_optimized(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> {
     match format {
         CompressionFormat::None => Ok(data.to_vec()),
+        #[cfg(feature = "compression")]
         CompressionFormat::Gzip => {
             let mut decoder = GzDecoder::new(data);
             let mut result = Vec::with_capacity(data.len() * 3); // Estimation conservative
             decoder.read_to_end(&mut result)?;
             Ok(result)
         },
+        #[cfg(feature = "compression")]
         CompressionFormat::Zlib => {
             use flate2::read::ZlibDecoder;
             let mut decoder = ZlibDecoder::new(data);
             let mut result = Vec::with_capacity(data.len() * 3);
             decoder.read_to_end(&mut result)?;
             Ok(result)
+        }
+        #[cfg(not(feature = "compression"))]
+        CompressionFormat::Gzip | CompressionFormat::Zlib => {
+            Err(CompressionError::InvalidFormat)
         }
     }
 }
@@ -178,21 +186,30 @@ impl NbtFile {
 
 /// Compression optimisée avec buffer pooling
 fn compress_data(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> {
+    #[cfg(feature = "compression")]
     use flate2::write::{GzEncoder, ZlibEncoder};
+    #[cfg(feature = "compression")]
     use flate2::Compression;
+    #[cfg(feature = "compression")]
     use std::io::Write;
     
     match format {
         CompressionFormat::None => Ok(data.to_vec()),
+        #[cfg(feature = "compression")]
         CompressionFormat::Gzip => {
             let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
             encoder.write_all(data)?;
             Ok(encoder.finish()?)
         },
+        #[cfg(feature = "compression")]
         CompressionFormat::Zlib => {
             let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
             encoder.write_all(data)?;
             Ok(encoder.finish()?)
+        }
+        #[cfg(not(feature = "compression"))]
+        CompressionFormat::Gzip | CompressionFormat::Zlib => {
+            Err(CompressionError::InvalidFormat)
         }
     }
 }
