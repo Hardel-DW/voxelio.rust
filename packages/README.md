@@ -1,209 +1,227 @@
-# @voxelio/nbt-wasm
+# NBT TypeScript - API Simplifiée & Performante
 
-Fast, modern NBT (Named Binary Tag) library for web browsers using WebAssembly.
+Librairie TypeScript ultra-performante pour les fichiers NBT/MCA de Minecraft,
+basée sur Rust/WASM.
 
-🚀 **10x+ faster** than pure JavaScript implementations\
-⚡ **Zero-copy parsing** with optimized memory usage\
-🧩 **All NBT formats** - Files, SNBT, Regions\
-🎯 **Modern TypeScript** API with full type safety\
-📦 **Tiny bundle** - Optimized WASM for web
+## 🎯 **Design Philosophy**
 
-## Installation
+- **Performance native** : Mapping direct Rust/WASM, zero abstraction inutile
+- **API simple** : Pas de over-engineering, méthodes directes
+- **Zero-copy** : Réutilisation des buffers Rust autant que possible
+- **Type-safe** : Types TypeScript stricts avec gestion d'erreur explicite
 
-```bash
-npm install @voxelio/nbt-wasm
-```
+## 🚀 **API Core**
 
-## Quick Start
+### **NbtFile** - Performance-First
 
 ```typescript
-import { initNbt, loadNbtFile, parseSnbtString } from "@voxelio/nbt-wasm";
+import { NbtFile } from "./index";
+import initNbt from "./wasm";
 
-// Initialize WASM module once
-await initNbt();
+// Initialize WASM once
+initNbt();
 
-// Parse SNBT strings
-const tag = parseSnbtString('{name: "Steve", level: 42}');
-console.log(tag.getString("name")); // "Steve"
-console.log(tag.getNumber("level")); // 42
+// === LECTURE ===
+const nbt = NbtFile.read(data); // Lecture complète
+const lazy = NbtFile.readLazy(data, ["DataVersion", "LastPlayed"]); // Lazy loading
 
-// Load NBT files
-const file = await loadNbtFile(nbtFileBlob);
-console.log(file.compression); // "gzip" | "zlib" | "none"
-console.log(file.root.toJson()); // Full data as JSON
+// === ACCÈS SIMPLE ===
+// Safe (retourne null si absent)
+const playerName = nbt.getString("Data.Player.Name") ?? "Steve";
+const level = nbt.getNumber("Data.Player.Level") ?? 1;
+const health = nbt.getNumber("Data.Player.Health") ?? 20;
+
+// Strict (throw si absent/mauvais type)
+const dataVersion = nbt.getNumberOrThrow("DataVersion");
+const worldName = nbt.getStringOrThrow("Data.LevelName");
+
+// === ÉDITION ===
+nbt.setString("Data.Player.Name", "SuperSteve");
+nbt.setInt("Data.Player.Level", 50);
+nbt.setByte("Data.Player.NewFlag", 1);
+
+// === I/O ===
+const bytes = nbt.write();
 ```
 
-## API Reference
-
-### Core Functions
-
-#### `initNbt(): Promise<void>`
-
-Initialize the WASM module. Call once before using any NBT functions.
-
-#### `parseSnbtString(snbt: string): NbtTag`
-
-Parse SNBT (String NBT) format to NBT tag.
+### **Batch Processing** - Haute Performance
 
 ```typescript
-const tag = parseSnbtString('{player: {name: "Steve", health: 20.0f}}');
-const playerName = tag.get("player")?.getString("name");
+// Traitement de nombreux fichiers
+const files = [file1Data, file2Data, file3Data];
+
+NbtFile.processBatch(files, (nbt, index) => {
+    const level = nbt.getNumber("Data.Player.Level") ?? 0;
+    nbt.setInt("Data.Player.Level", level + 10);
+
+    console.log(`File ${index}: Level updated to ${level + 10}`);
+});
+
+// Lazy batch pour économiser mémoire
+const lazyFiles = files.map((data) =>
+    NbtFile.readLazy(data, ["Data.Player.Level", "Data.Player.Name"])
+);
 ```
 
-#### `formatSnbtString(tag: NbtTag): string`
-
-Format NBT tag back to SNBT string.
-
-#### `readNbt(data: Uint8Array): NbtFile`
-
-Read NBT file from bytes with automatic compression detection.
-
-#### `readNbtFields(data: Uint8Array, fields?: string): NbtFile`
-
-Read NBT file with selective field parsing for performance.
+### **Region Files** (.mca)
 
 ```typescript
-// Only parse specific fields
-const nbt = readNbtFields(data, "Player,Level,Data");
-```
+import { NbtRegion } from "./index";
 
-### Region Files
+// === LECTURE RÉGION ===
+const region = NbtRegion.read(regionData);
 
-#### `readRegion(data: Uint8Array): NbtRegion`
+// === INFORMATIONS ===
+console.log(`Chunks: ${region.getChunkCount()}`);
+console.log(`Empty: ${region.isEmpty()}`);
+console.log(`Positions:`, region.getChunkPositions());
 
-Read Minecraft region file (.mca).
-
-```typescript
-const region = readRegion(mcaData);
-console.log(region.chunkCount());
-
-const chunks = parseChunkPositions(region.getChunkPositions());
-for (const { x, z } of chunks) {
-    const chunk = region.getChunk(x, z);
-    // Process chunk data...
+// === ACCÈS CHUNKS ===
+const chunk = region.getChunk(0, 0);
+if (chunk) {
+    const biome = chunk.getString("sections[0].biomes.palette[0]");
+    chunk.setString("sections[0].biomes.palette[0]", "minecraft:plains");
 }
-```
 
-### Type System
+// === ITERATION ===
+region.processChunks((chunk, x, z) => {
+    const status = chunk.getString("Level.Status");
+    if (status === "postprocessed") {
+        chunk.setString("Level.Status", "full");
+    }
+});
 
-#### `NbtTag`
-
-Main NBT data type with type-safe access methods:
-
-```typescript
-interface NbtTag {
-    readonly typeId: number;
-
-    // Value accessors
-    asNumber(): number;
-    asString(): string;
-
-    // Compound accessors
-    get(key: string): NbtTag | undefined;
-    getString(key: string): string;
-    getNumber(key: string): number;
-    getBool(key: string): boolean;
-    keys(): string[];
-
-    // Type checking
-    isNumber(): boolean;
-    isString(): boolean;
-    isCompound(): boolean;
-    isList(): boolean;
-
-    // JSON conversion
-    toJson(): unknown;
-}
-```
-
-#### `NbtFile`
-
-Represents a complete NBT file with metadata:
-
-```typescript
-interface NbtFile {
-    readonly root: NbtTag;
-    readonly name: string;
-    readonly compression: "none" | "gzip" | "zlib";
-}
-```
-
-## Performance
-
-The WASM implementation provides significant performance benefits:
-
-- **Parsing**: 10-50x faster than pure JS
-- **Memory**: Zero-copy reading, minimal allocations
-- **Bundle size**: ~50KB WASM vs ~200KB pure JS
-- **Selective parsing**: Only parse needed fields
-
-## Browser Support
-
-- Chrome/Edge 57+
-- Firefox 52+
-- Safari 11+
-- Node.js 16+ (with WASM support)
-
-## Examples
-
-### File Upload Handler
-
-```typescript
-import { initNbt, loadNbtFile } from "@voxelio/nbt-wasm";
-
-await initNbt();
-
-fileInput.addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-        const nbt = await loadNbtFile(file);
-        displayNbtData(nbt.root.toJson());
-    } catch (error) {
-        console.error("Invalid NBT file:", error);
+// Batch de chunks spécifiques
+const targetChunks = [{ x: 0, z: 0 }, { x: 1, z: 0 }];
+region.processChunkBatch(targetChunks, (chunk, x, z) => {
+    if (chunk) {
+        console.log(`Processing chunk ${x},${z}`);
     }
 });
 ```
 
-### SNBT Editor
+## 🔥 **Performances**
+
+### **Optimisations Clés**
+
+1. **Direct WASM mapping** : Zero abstraction TypeScript
+2. **Lazy loading** : Parse seulement les champs nécessaires
+3. **Batch processing** : Partage du contexte WASM
+4. **Path resolution** : Optimisée côté Rust
+5. **Type preservation** : Évite les conversions inutiles
+
+### **Exemple Performance**
 
 ```typescript
-import { formatSnbtString, parseSnbtString } from "@voxelio/nbt-wasm";
+// ❌ ANCIEN - Over-engineered
+const accessor = nbt.createAccessor("Data.Player.Level");
+for (let i = 0; i < 1000; i++) {
+    const level = accessor.getNumberOrThrow();
+}
 
-function updateSnbt(input: string) {
-    try {
-        const tag = parseSnbtString(input);
-        const formatted = formatSnbtString(tag);
-        editor.setValue(formatted);
-    } catch (error) {
-        showError("Invalid SNBT syntax");
+// ✅ NOUVEAU - Simple et rapide
+const level = nbt.getNumber("Data.Player.Level");
+// Direct WASM call, path parsé une seule fois
+```
+
+## 📋 **Types**
+
+```typescript
+// Path navigation
+type NbtPath = string | string[];
+
+// Union type simple
+type NbtValue =
+    | number // Byte, Short, Int, Long, Float, Double
+    | string // String
+    | boolean // Converti en Byte (0/1)
+    | NbtValue[] // List
+    | { [key: string]: NbtValue } // Compound
+    | Int8Array // ByteArray
+    | Int32Array // IntArray
+    | BigInt64Array; // LongArray
+
+type CompressionFormat = "none" | "gzip" | "zlib";
+```
+
+## 🎮 **Use Cases Minecraft**
+
+### **Player Data Edition**
+
+```typescript
+const nbt = NbtFile.read(playerData);
+
+// Boost player
+nbt.setInt("Data.Player.Level", 100);
+nbt.setFloat("Data.Player.Health", 20.0);
+nbt.setString("Data.Player.Name", "SuperPlayer");
+
+// Inventory modification
+const inventory = nbt.getArray("Data.Player.Inventory");
+// Process inventory items...
+```
+
+### **World Processing**
+
+```typescript
+// Batch process multiple worlds
+const worldFiles = [...]; // Array de Uint8Array
+
+NbtFile.processBatch(worldFiles, (world, index) => {
+    const spawnX = world.getNumber('Data.SpawnX') ?? 0;
+    const spawnZ = world.getNumber('Data.SpawnZ') ?? 0;
+    
+    // Recentrer spawn
+    world.setInt('Data.SpawnX', 0);
+    world.setInt('Data.SpawnZ', 0);
+    
+    console.log(`World ${index}: Spawn moved from (${spawnX}, ${spawnZ}) to (0, 0)`);
+});
+```
+
+### **Chunk Processing**
+
+```typescript
+const region = NbtRegion.read(mcaFile);
+
+// Convertir tous les chunks ocean en plains
+region.processChunks((chunk, x, z) => {
+    const sections = chunk.getArray("Level.Sections");
+    if (sections) {
+        // Process biome palettes...
+        chunk.setString("Level.Biomes.palette[0]", "minecraft:plains");
     }
-}
+});
+
+const modifiedBytes = region.write();
 ```
 
-### Region Viewer
+## 🔧 **Setup**
+
+```bash
+npm install
+npm run build
+```
 
 ```typescript
-import { parseChunkPositions, readRegion } from "@voxelio/nbt-wasm";
+import initNbt, { NbtFile, NbtRegion } from "./index";
 
-async function loadRegion(mcaFile: File) {
-    const data = new Uint8Array(await mcaFile.arrayBuffer());
-    const region = readRegion(data);
+// Initialize once at app start
+initNbt();
 
-    const chunks = parseChunkPositions(region.getChunkPositions());
-    console.log(`Region contains ${chunks.length} chunks`);
-
-    // Load chunk data on demand
-    chunks.forEach(({ x, z }) => {
-        const chunk = region.getChunk(x, z);
-        if (chunk) {
-            renderChunk(x, z, chunk);
-        }
-    });
-}
+// Use anywhere
+const nbt = NbtFile.read(data);
 ```
 
-## License
+---
 
-MIT
+## 🧠 **Architecture**
+
+- **Rust Core** : Parsing, compression, région handling
+- **WASM Bridge** : Types JsNbtFile, JsNbtTag, JsNbtRegion
+- **TypeScript Layer** : API simple wrappant WASM directement
+
+**Philosophy** : Laisser Rust faire le travail lourd, TypeScript just expose
+l'API proprement.
+
+Performance maximale, complexité minimale. 🚀

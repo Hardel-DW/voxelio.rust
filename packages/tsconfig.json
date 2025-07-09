@@ -28,6 +28,7 @@
     "exclude": [
         "dist",
         "wasm",
-        "node_modules"
+        "node_modules",
+        "bench"
     ]
 }
