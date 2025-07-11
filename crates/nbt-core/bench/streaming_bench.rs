@@ -1,5 +1,4 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use nbt_compression::*;
 use nbt_core::*;
 use std::time::Duration;
 

@@ -1,5 +1,4 @@
-use nbt_compression::NbtFile;
-use nbt_core::NbtTag;
+use nbt_core::{NbtFile, NbtTag};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn edit_nbt_file(nbt_file: &mut NbtFile) {

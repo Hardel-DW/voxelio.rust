@@ -1,9 +1,8 @@
-use nbt_compression::NbtFile;
+use nbt_core::NbtFile;
 use nbt_core::NbtTag;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Read cube.nbt
-    let cube_data = std::fs::read("crates/nbt-bench/bench/mock/cube.nbt")?;
+fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    let cube_data = std::fs::read("mock/cube.nbt")?;
     let mut nbt_file = NbtFile::read(&cube_data)?;
     
     // Go to palette and modify the Name

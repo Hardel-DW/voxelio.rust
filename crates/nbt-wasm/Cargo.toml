@@ -7,8 +7,10 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [features]
-default = ["compression"]
-compression = ["nbt-compression/compression"]
+default = ["compression", "snbt", "region"]
+compression = ["nbt-core/compression"]
+snbt = ["nbt-core/snbt"]
+region = ["nbt-core/region"]
 debug = ["console_error_panic_hook"]
 
 [dependencies]
@@ -19,11 +21,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 console_error_panic_hook = { version = "0.1", optional = true }
 
-# Local crates
-nbt-core = { path = "../nbt-core" }
-nbt-compression = { path = "../nbt-compression" }
-nbt-region = { path = "../nbt-region" }
-nbt-snbt = { path = "../nbt-snbt" }
+# Unified core
+nbt-core = { path = "../nbt-core", features = ["compression", "snbt", "region"] }
 
 [dependencies.getrandom]
 version = "0.2"

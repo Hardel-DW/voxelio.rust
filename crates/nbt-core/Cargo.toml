@@ -2,12 +2,52 @@
 name = "nbt-core"
 version = "0.1.0"
 edition = "2021"
-description = "Core NBT types and parsing - zero-copy and fast"
+description = "Unified NBT library - Core types, compression, SNBT, regions, and WASM bindings"
+
+[features]
+default = ["compression", "snbt"]
+compression = ["flate2"]
+snbt = ["winnow"]
+region = ["compression"]
+wasm = ["wasm-bindgen", "js-sys", "web-sys", "serde", "serde-wasm-bindgen"]
+bench = []
 
 [dependencies]
 thiserror = { workspace = true }
-# ahash = { workspace = true } # Problème de compilation sur Windows, on utilisera HashMap standard
 
-# Pas de criterion pour l'instant, problème dlltool sur Windows
-# [dev-dependencies]
-# criterion = { workspace = true } 
+# Compression dependencies
+flate2 = { version = "1.0", optional = true }
+
+# SNBT dependencies  
+winnow = { version = "0.5", optional = true }
+
+# WASM dependencies
+wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
+js-sys = { version = "0.3", optional = true }
+web-sys = { version = "0.3", optional = true, features = ["console"] }
+serde = { version = "1.0", optional = true, features = ["derive"] }
+serde-wasm-bindgen = { version = "0.6", optional = true }
+console_error_panic_hook = { version = "0.1", optional = true }
+getrandom = { version = "0.2", optional = true, features = ["js"] }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+# Conditional benchmarks only when bench feature is enabled
+[[bench]]
+name = "batch_processing_bench"
+path = "bench/batch_processing_bench.rs"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "editing_bench" 
+path = "bench/editing_bench.rs"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "streaming_bench"
+path = "bench/streaming_bench.rs"
+harness = false
+required-features = ["bench"] 

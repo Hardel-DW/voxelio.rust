@@ -1,10 +1,6 @@
 [workspace]
 members = [
     "crates/nbt-core",
-    "crates/nbt-compression",
-    "crates/nbt-snbt",
-    "crates/nbt-region",
-    "crates/nbt-bench",
     "crates/nbt-wasm",
 ]
 
