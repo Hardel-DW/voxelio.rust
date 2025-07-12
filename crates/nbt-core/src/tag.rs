@@ -12,10 +12,7 @@ pub enum NbtTag {
     Double(f64),
     ByteArray(Vec<i8>),
     String(String),
-    List { 
-        tag_type: u8, 
-        items: Vec<NbtTag> 
-    },
+    List { tag_type: u8, items: Vec<NbtTag> },
     Compound(HashMap<String, NbtTag>),
     IntArray(Vec<i32>),
     LongArray(Vec<i64>),
@@ -86,11 +83,24 @@ impl NbtTag {
         }
     }
 
+    /// Get mutable list
+    pub fn as_list_mut(&mut self) -> Option<(&mut u8, &mut Vec<NbtTag>)> {
+        match self {
+            NbtTag::List { tag_type, items } => Some((tag_type, items)),
+            _ => None,
+        }
+    }
+
     /// Type checking methods - simple and fast
     pub fn is_number(&self) -> bool {
-        matches!(self, 
-            NbtTag::Byte(_) | NbtTag::Short(_) | NbtTag::Int(_) | 
-            NbtTag::Long(_) | NbtTag::Float(_) | NbtTag::Double(_)
+        matches!(
+            self,
+            NbtTag::Byte(_)
+                | NbtTag::Short(_)
+                | NbtTag::Int(_)
+                | NbtTag::Long(_)
+                | NbtTag::Float(_)
+                | NbtTag::Double(_)
         )
     }
 
@@ -154,6 +164,9 @@ impl NbtTag {
     }
 
     pub fn list(tag_type: u8) -> Self {
-        NbtTag::List { tag_type, items: Vec::new() }
+        NbtTag::List {
+            tag_type,
+            items: Vec::new(),
+        }
     }
-} 
+}

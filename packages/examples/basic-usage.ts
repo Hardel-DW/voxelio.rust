@@ -1,66 +1,75 @@
+// /**
+//  * Basic Usage Examples - New NBT API
+//  *
+//  * Demonstrates:
+//  * - Zero memory leaks with 'using' syntax
+//  * - High-performance path-based access
+//  * - Efficient iteration and editing
+//  * - Batch operations
+//  */
 
-import { NbtFile, NbtRegion } from '../src/index';
-import initNbt from '../src/wasm';
-import { readFileSync } from 'fs';
+// import { NbtFile, NbtRegion, initNbt } from '../src/index.js';
+// import { readFileSync } from 'fs';
 
-// Initialize WASM
-initNbt();
+// // Initialize WASM once
+// await initNbt();
 
-async function basicExample() {
-    console.log('=== NBT Basic Usage - Simplified API ===\n');
 
-    // Lecture simple
-    const data = readFileSync('./taiga_armorer_2.nbt');
-    const nbt = NbtFile.read(data);
+// const nbtData = readFileSync('cube.nbt');
+// using nbt = await NbtFile.from(nbtData);
 
-    console.log(`File: ${nbt.name}`);
-    console.log(`Compression: ${nbt.compression}`);
+// // Direct access
+// console.log('Player name:', nbt.getString('Data.Player.Name'));
+// console.log('Player level:', nbt.getNumber('Data.Player.Level'));
 
-    // Accès simple aux données
-    const playerName = nbt.getString('Data.Player.Name') ?? 'Unknown';
-    const level = nbt.getNumber('Data.Player.Level') ?? 0;
-    const health = nbt.getNumber('Data.Player.Health') ?? 20;
+// // Root tag processing
+// const result = nbt.process(root => {
+//     const playerName = root.getString('Data.Player.Name');
+//     const level = root.getNumber('Data.Player.Level');
 
-    console.log(`Player: ${playerName}`);
-    console.log(`Level: ${level}`);
-    console.log(`Health: ${health}\n`);
+//     // Modify data
+//     root.setString('Data.Player.Name', 'SuperSteve');
+//     root.setNumber('Data.Player.Level', level + 1);
 
-    // Édition simple
-    nbt.setString('Data.Player.Name', 'SuperSteve');
-    nbt.setInt('Data.Player.Level', level + 10);
+//     return { playerName, level };
+// });
 
-    console.log('After modification:');
-    console.log(`Player: ${nbt.getString('Data.Player.Name')}`);
-    console.log(`Level: ${nbt.getNumber('Data.Player.Level')}\n`);
+// console.log('Original data:', result);
 
-    // Performance - Lecture lazy
-    console.log('=== Lazy Loading Demo ===');
-    const lazyNbt = NbtFile.readLazy(data, ['Data.Player.Name', 'Data.Player.Level']);
-    console.log(`Lazy Name: ${lazyNbt.getString('Data.Player.Name')}`);
-    console.log(`Lazy Level: ${lazyNbt.getNumber('Data.Player.Level')}\n`);
+// // === BATCH PROCESSING ===
+// console.log('\n=== BATCH PROCESSING ===');
 
-    // Batch processing
-    console.log('=== Batch Processing Demo ===');
-    const files = [data, data, data]; // Simuler plusieurs fichiers
-    NbtFile.processBatch(files, (nbt, index) => {
-        const name = nbt.getString('Data.Player.Name') ?? 'Unknown';
-        console.log(`File ${index}: ${name}`);
-    });
+// const files = [nbtData, nbtData, nbtData];
+// const results = await NbtFile.processBatch(files, (nbt, index) => {
+//     return nbt.process(root => {
+//         const name = root.getString('Data.Player.Name');
+//         root.setString('Data.Player.Name', `Player_${index}`);
+//         return name;
+//     });
+// });
 
-    // Test d'écriture
-    const outputBytes = nbt.write();
-    console.log(`\nOutput size: ${outputBytes.length} bytes`);
-}
+// console.log('Batch results:', results);
 
-async function regionExample() {
-    console.log('\n=== Region File Demo ===');
+// // === REGION EXAMPLE ===
+// console.log('\n=== REGION PROCESSING ===');
 
-    // Créer une région vide
-    const region = NbtRegion.new();
-    console.log(`Empty region chunks: ${region.getChunkCount()}`);
-    console.log(`Is empty: ${region.isEmpty()}`);
+// try {
+//     const regionData = readFileSync('region.mca');
+//     using region = await NbtRegion.from(regionData);
 
-    // TODO: Ajouter exemple avec vraie région quand setChunk sera implémenté
-}
+//     // Process all chunks
+//     const chunkCount = region.processChunks((chunk, x, z) => {
+//         const status = chunk.getString('Level.Status');
+//         if (status === 'full') {
+//             console.log(`Chunk ${x},${z} is fully generated`);
+//             return 1;
+//         }
+//         return 0;
+//     }).reduce((sum, count) => sum + count, 0);
 
-basicExample().then(() => regionExample()).catch(console.error); 
+//     console.log(`Found ${chunkCount} fully generated chunks`);
+// } catch (error) {
+//     console.log('No region file found, skipping region example');
+// }
+
+// console.log('\n=== DONE ==='); 

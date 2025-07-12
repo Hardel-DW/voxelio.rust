@@ -1,66 +1,79 @@
-import { JsNbtFile, JsNbtTag } from "./nbt_wasm";
-import { CompressionFormat } from "./index";
-import { ensureInitialized } from "./wasm";
+import { nbt_file_read, nbt_file_write, nbt_file_dispose, nbt_get_string, nbt_get_number, nbt_get_root, nbt_file_set_list_item_string } from "./nbt_wasm";
+import { NbtTag } from "./NbtTag";
+import { ensureWasmInit } from "./wasm";
 
-/**
- * NBT File - Direct WASM bridge with zero abstraction
- */
 export class NbtFile {
-    private constructor(private jsFile: JsNbtFile) { }
+    private handle: number;
+    private disposed = false;
 
-    // === STATIC FACTORIES - Direct WASM ===
-    static read(data: Uint8Array): NbtFile {
-        ensureInitialized();
-        return new NbtFile(JsNbtFile.read(data));
+    private constructor(handle: number) {
+        this.handle = handle;
     }
 
-    static readLazy(data: Uint8Array, fields: string[]): NbtFile {
-        ensureInitialized();
-        return new NbtFile(JsNbtFile.readFields(data, fields.join(',')));
+    static async from(data: Uint8Array): Promise<NbtFile> {
+        await ensureWasmInit();
+        const handle = nbt_file_read(data);
+        return new NbtFile(handle);
     }
 
-    // === PROPERTIES - Direct WASM ===
-    get name(): string {
-        return this.jsFile.name;
+    static async processBatch<T>(
+        files: Uint8Array[],
+        processor: (nbt: NbtFile, index: number) => T
+    ): Promise<T[]> {
+        const results: T[] = [];
+        for (let i = 0; i < files.length; i++) {
+            using nbt = await NbtFile.from(files[i]);
+            results.push(processor(nbt, i));
+        }
+        return results;
     }
 
-    get compression(): CompressionFormat {
-        return this.jsFile.compression as CompressionFormat;
+    getString(key: string): string {
+        this.ensureNotDisposed();
+        return nbt_get_string(this.handle, key);
     }
 
-    // === ROOT TAG ACCESS - Direct WASM ===
-    getRoot(): JsNbtTag {
-        return this.jsFile.root;
+    getNumber(key: string): number {
+        this.ensureNotDisposed();
+        return nbt_get_number(this.handle, key);
     }
 
-    // === BATCH OPERATIONS - High Performance ===
-    getMultiplePaths(paths: string[]): Record<string, string> {
-        return this.jsFile.getMultiplePaths(paths.join(','));
+    getRoot(): NbtTag {
+        this.ensureNotDisposed();
+        const tagHandle = nbt_get_root(this.handle);
+        return new NbtTag(tagHandle);
     }
 
-    // === DIRECT MODIFICATION METHODS - Work on internal root ===
-    setStringByPath(path: string, value: string): boolean {
-        return this.jsFile.setStringByPath(path, value);
+    process<T>(processor: (root: NbtTag) => T): T {
+        this.ensureNotDisposed();
+        using root = this.getRoot();
+        return processor(root);
     }
 
-    setNumberByPath(path: string, value: number): boolean {
-        return this.jsFile.setNumberByPath(path, value);
-    }
-
-    modifyListItem(listPath: string, index: number, key: string, value: string): boolean {
-        return this.jsFile.modifyListItem(listPath, index, key, value);
-    }
-
-    // === I/O - Direct WASM ===
     write(): Uint8Array {
-        return this.jsFile.write();
+        this.ensureNotDisposed();
+        return nbt_file_write(this.handle);
     }
 
-    // === BATCH PROCESSING - Zero TypeScript Logic ===
-    static processBatch(files: Uint8Array[], processor: (nbt: NbtFile, index: number) => void): void {
-        ensureInitialized();
-        files.forEach((data, index) => {
-            processor(new NbtFile(JsNbtFile.read(data)), index);
-        });
+    setListItemString(path: string, index: number, key: string, value: string): void {
+        this.ensureNotDisposed();
+        nbt_file_set_list_item_string(this.handle, path, index, key, value);
+    }
+
+    private ensureNotDisposed() {
+        if (this.disposed) {
+            throw new Error('NbtFile has been disposed');
+        }
+    }
+
+    dispose() {
+        if (!this.disposed) {
+            nbt_file_dispose(this.handle);
+            this.disposed = true;
+        }
+    }
+
+    [Symbol.dispose]() {
+        this.dispose();
     }
 }
