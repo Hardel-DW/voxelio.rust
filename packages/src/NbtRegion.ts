@@ -26,14 +26,14 @@ export class NbtRegion {
         }
     }
 
-    dispose() {
+    dispose(): void {
         if (!this.disposed) {
             nbt_region_dispose(this.handle);
             this.disposed = true;
         }
     }
 
-    [Symbol.dispose]() {
+    [Symbol.dispose](): void {
         this.dispose();
     }
 }

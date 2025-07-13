@@ -5,7 +5,7 @@ import { initSync } from "./nbt_wasm";
 
 let wasmInitialized = false;
 
-export async function ensureWasmInit() {
+export async function ensureWasmInit(): Promise<void> {
     if (!wasmInitialized) {
         try {
             const __filename = fileURLToPath(import.meta.url);
@@ -19,8 +19,4 @@ export async function ensureWasmInit() {
             throw error;
         }
     }
-}
-
-export async function initNbt() {
-    await ensureWasmInit();
 }

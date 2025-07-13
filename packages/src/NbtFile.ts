@@ -66,14 +66,14 @@ export class NbtFile {
         }
     }
 
-    dispose() {
+    dispose(): void {
         if (!this.disposed) {
             nbt_file_dispose(this.handle);
             this.disposed = true;
         }
     }
 
-    [Symbol.dispose]() {
+    [Symbol.dispose](): void {
         this.dispose();
     }
 }

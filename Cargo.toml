@@ -1,13 +1,8 @@
 [workspace]
-members = [
-    "crates/nbt-core",
-    "crates/nbt-wasm",
-]
-
+members = ["libs"]
 resolver = "2"
 
 [workspace.dependencies]
-# Core dependencies - garde ça simple
 thiserror = "1.0"
 ahash = "0.8"
 
@@ -26,7 +21,6 @@ js-sys = "0.3"
 web-sys = "0.3"
 
 [profile.release]
-# Optimisation max pour taille WASM
 opt-level = "s"        # Size optimization
 lto = true             # Link-time optimization
 codegen-units = 1      # Single codegen unit

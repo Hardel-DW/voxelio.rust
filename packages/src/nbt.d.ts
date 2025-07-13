@@ -1,6 +1,5 @@
 /* tslint:disable */
 /* eslint-disable */
-export function main(): void;
 export function nbt_file_read(data: Uint8Array): number;
 export function nbt_file_write(handle: number): Uint8Array;
 export function nbt_file_dispose(handle: number): void;
@@ -28,7 +27,6 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly main: () => void;
   readonly nbt_file_read: (a: number, b: number, c: number) => void;
   readonly nbt_file_write: (a: number, b: number) => void;
   readonly nbt_file_dispose: (a: number) => void;
@@ -55,7 +53,6 @@ export interface InitOutput {
   readonly __wbindgen_export_0: (a: number, b: number) => number;
   readonly __wbindgen_export_1: (a: number, b: number, c: number) => void;
   readonly __wbindgen_export_2: (a: number, b: number, c: number, d: number) => number;
-  readonly __wbindgen_start: () => void;
 }
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;

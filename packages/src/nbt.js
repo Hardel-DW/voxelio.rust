@@ -33,10 +33,6 @@ function addHeapObject(obj) {
     return idx;
 }
 
-export function main() {
-    wasm.main();
-}
-
 let WASM_VECTOR_LEN = 0;
 
 function passArray8ToWasm0(arg, malloc) {
@@ -655,7 +651,7 @@ function __wbg_finalize_init(instance, module) {
     cachedUint8ArrayMemory0 = null;
 
 
-    wasm.__wbindgen_start();
+
     return wasm;
 }
 
@@ -697,7 +693,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (typeof module_or_path === 'undefined') {
-        module_or_path = new URL('nbt_wasm_bg.wasm', import.meta.url);
+        module_or_path = new URL('nbt_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 

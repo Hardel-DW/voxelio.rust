@@ -1,10 +1,7 @@
 import { NbtFile, NbtType } from '../src/index.js';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { initNbt } from '../src/wasm.js';
 
 async function main() {
-    await initNbt();
-
     try {
         console.log('📁 Loading cube.nbt...');
         const data = readFileSync('./cube.nbt');

@@ -1,16 +1,10 @@
-use nbt_core::*;
+use crate::{NbtFile, NbtTag};
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 use wasm_bindgen::prelude::*;
 
-#[cfg(feature = "debug")]
-use console_error_panic_hook;
-
-#[wasm_bindgen(start)]
-pub fn main() {
-    #[cfg(feature = "debug")]
-    console_error_panic_hook::set_once();
-}
+#[cfg(feature = "region")]
+use crate::region::Region;
 
 struct FileStore {
     files: HashMap<u32, NbtFile>,
@@ -106,7 +100,7 @@ pub fn nbt_get_root(handle: u32) -> std::result::Result<u32, JsValue> {
     match file_store.files.get(&handle) {
         Some(file) => {
             let root_tag = file.root.clone();
-            drop(file_store); // Release file store lock before acquiring tag store lock
+            drop(file_store);
 
             let mut tag_store = TAG_STORE.lock().unwrap();
             let tag_id = tag_store.next_id;
@@ -162,7 +156,6 @@ pub fn nbt_tag_get_compound_keys(handle: u32) -> std::result::Result<Vec<String>
 
 #[wasm_bindgen]
 pub fn nbt_tag_get_compound_value(handle: u32, key: &str) -> std::result::Result<u32, JsValue> {
-    // First, get the tag and extract the value we need
     let tag_value = {
         let store = TAG_STORE.lock().unwrap();
         match store.tags.get(&handle) {
@@ -179,9 +172,8 @@ pub fn nbt_tag_get_compound_value(handle: u32, key: &str) -> std::result::Result
             }
             None => return Err(JsValue::from_str("Invalid tag handle")),
         }
-    }; // Lock is released here
+    };
 
-    // Now acquire the lock again to insert the new tag
     let mut tag_store = TAG_STORE.lock().unwrap();
     let tag_id = tag_store.next_id;
     tag_store.next_id += 1;
@@ -206,7 +198,6 @@ pub fn nbt_tag_get_list_length(handle: u32) -> std::result::Result<u32, JsValue>
 
 #[wasm_bindgen]
 pub fn nbt_tag_get_list_item(handle: u32, index: u32) -> std::result::Result<u32, JsValue> {
-    // First, get the list item we need
     let list_item = {
         let store = TAG_STORE.lock().unwrap();
         match store.tags.get(&handle) {
@@ -223,9 +214,8 @@ pub fn nbt_tag_get_list_item(handle: u32, index: u32) -> std::result::Result<u32
             }
             None => return Err(JsValue::from_str("Invalid tag handle")),
         }
-    }; // Lock is released here
+    };
 
-    // Now acquire the lock again to insert the new tag
     let mut tag_store = TAG_STORE.lock().unwrap();
     let tag_id = tag_store.next_id;
     tag_store.next_id += 1;
@@ -244,7 +234,6 @@ pub fn nbt_file_set_list_item_string(
     let mut file_store = FILE_STORE.lock().unwrap();
     match file_store.files.get_mut(&file_handle) {
         Some(file) => {
-            // Naviguer vers la liste dans le fichier
             if let Some(compound) = file.root.as_compound_mut() {
                 if let Some(palette_tag) = compound.get_mut(path) {
                     if let Some((_, items)) = palette_tag.as_list_mut() {

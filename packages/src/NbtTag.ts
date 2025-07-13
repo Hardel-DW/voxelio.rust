@@ -1,4 +1,4 @@
-import { nbt_tag_type, nbt_tag_as_string, nbt_tag_as_number, nbt_tag_get_compound_keys, nbt_tag_get_compound_value, nbt_tag_get_string, nbt_tag_get_number, nbt_tag_set_string, nbt_tag_set_number, nbt_tag_get_list_length, nbt_tag_get_list_item, nbt_tag_dispose, nbt_file_set_list_item_string } from "./nbt_wasm";
+import { nbt_tag_type, nbt_tag_as_string, nbt_tag_as_number, nbt_tag_get_compound_keys, nbt_tag_get_compound_value, nbt_tag_get_string, nbt_tag_get_number, nbt_tag_set_string, nbt_tag_set_number, nbt_tag_get_list_length, nbt_tag_get_list_item, nbt_tag_dispose } from "./nbt_wasm";
 import { NbtType } from "./index";
 
 export class NbtTag {
@@ -105,14 +105,14 @@ export class NbtTag {
         }
     }
 
-    dispose() {
+    dispose(): void {
         if (!this.disposed) {
             nbt_tag_dispose(this.handle);
             this.disposed = true;
         }
     }
 
-    [Symbol.dispose]() {
+    [Symbol.dispose](): void {
         this.dispose();
     }
 }

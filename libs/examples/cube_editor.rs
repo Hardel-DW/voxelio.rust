@@ -1,10 +1,10 @@
-use nbt_core::NbtFile;
-use nbt_core::NbtTag;
+use nbt::NbtFile;
+use nbt::NbtTag;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let cube_data = std::fs::read("mock/cube.nbt")?;
     let mut nbt_file = NbtFile::read(&cube_data)?;
-    
+
     // Go to palette and modify the Name
     if let NbtTag::Compound(root) = &mut nbt_file.root {
         if let Some(NbtTag::List { items, .. }) = root.get_mut("palette") {
@@ -20,11 +20,11 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     // Save the modified file
     let new_data = nbt_file.write()?;
     std::fs::write("cube_modified.nbt", &new_data)?;
-    
+
     println!("✅ File saved: cube_modified.nbt");
     Ok(())
-} 
+}

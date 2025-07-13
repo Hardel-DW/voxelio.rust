@@ -1,11 +1,6 @@
-//! NBT Region - Fast Minecraft region file (.mca) reader and writer
-//! 
-//! Simple, efficient handling of Minecraft region files with lazy chunk loading.
-
 #[cfg(feature = "region")]
-use crate::{NbtError, NbtTag, NbtFile, CompressionFormat, Endian, Result};
+use crate::{CompressionFormat, Endian, NbtError, NbtFile, NbtTag, Result};
 
-/// Constants from Minecraft region file format
 #[cfg(feature = "region")]
 const REGION_SIZE: i32 = 32;
 #[cfg(feature = "region")]
@@ -15,11 +10,6 @@ const SECTOR_SIZE: usize = 4096;
 #[cfg(feature = "region")]
 const HEADER_SIZE: usize = 8192; // 2 sectors
 
-// ============================================================================
-// CHUNK IMPLEMENTATION
-// ============================================================================
-
-/// A Minecraft chunk within a region file
 #[cfg(feature = "region")]
 #[derive(Debug)]
 pub struct Chunk {
@@ -44,7 +34,7 @@ impl Chunk {
         if !Self::valid_coordinates(x, z) {
             return Err(NbtError::InvalidCoordinates { x, z });
         }
-        
+
         Ok(Self {
             x,
             z,
@@ -80,7 +70,7 @@ impl Chunk {
             1 => CompressionFormat::Gzip,
             2 => CompressionFormat::Zlib,
             3 => CompressionFormat::None,
-            _ => CompressionFormat::Zlib, // Default fallback
+            _ => CompressionFormat::Zlib,
         }
     }
 
@@ -97,11 +87,8 @@ impl Chunk {
     /// Parse NBT data (cached after first call)
     pub fn get_nbt(&mut self) -> Result<&NbtFile> {
         if self.cached_nbt.is_none() {
-            let nbt_file = NbtFile::read_with_format(
-                &self.raw_data,
-                self.get_compression(),
-                Endian::Big,
-            )?;
+            let nbt_file =
+                NbtFile::read_with_format(&self.raw_data, self.get_compression(), Endian::Big)?;
             self.cached_nbt = Some(nbt_file);
         }
         Ok(self.cached_nbt.as_ref().unwrap())
@@ -115,11 +102,8 @@ impl Chunk {
 
     /// Get the root NBT tag (immutable version - parses without caching)
     pub fn get_root_immutable(&self) -> Result<NbtTag> {
-        let nbt_file = NbtFile::read_with_format(
-            &self.raw_data,
-            self.get_compression(),
-            Endian::Big,
-        )?;
+        let nbt_file =
+            NbtFile::read_with_format(&self.raw_data, self.get_compression(), Endian::Big)?;
         Ok(nbt_file.root)
     }
 
@@ -180,11 +164,6 @@ impl PartialEq for Chunk {
     }
 }
 
-// ============================================================================
-// REGION IMPLEMENTATION
-// ============================================================================
-
-/// A Minecraft region file containing up to 1024 chunks (32x32)
 #[cfg(feature = "region")]
 #[derive(Debug)]
 pub struct Region {
@@ -216,24 +195,24 @@ impl Region {
         }
 
         let mut region = Self::new();
-        
+
         // Parse each potential chunk location
         for x in 0..REGION_SIZE {
             for z in 0..REGION_SIZE {
                 let index = (x + z * REGION_SIZE) as usize;
                 let header_offset = index * 4;
-                
+
                 // Read location header (4 bytes: 3 bytes offset + 1 byte sector count)
                 let location_data = &data[header_offset..header_offset + 4];
-                let offset = ((location_data[0] as u32) << 16) | 
-                            ((location_data[1] as u32) << 8) | 
-                            (location_data[2] as u32);
+                let offset = ((location_data[0] as u32) << 16)
+                    | ((location_data[1] as u32) << 8)
+                    | (location_data[2] as u32);
                 let sectors = location_data[3];
-                
+
                 if sectors == 0 {
                     continue; // Empty chunk slot
                 }
-                
+
                 // Read timestamp header (4 bytes at offset + SECTOR_SIZE)
                 let timestamp_offset = header_offset + SECTOR_SIZE;
                 if timestamp_offset + 4 > data.len() {
@@ -241,35 +220,39 @@ impl Region {
                 }
                 let timestamp_data = &data[timestamp_offset..timestamp_offset + 4];
                 let timestamp = u32::from_be_bytes([
-                    timestamp_data[0], timestamp_data[1], 
-                    timestamp_data[2], timestamp_data[3]
+                    timestamp_data[0],
+                    timestamp_data[1],
+                    timestamp_data[2],
+                    timestamp_data[3],
                 ]);
-                
+
                 // Read chunk data
                 let chunk_offset = (offset as usize) * SECTOR_SIZE;
                 if chunk_offset + 5 > data.len() {
                     continue;
                 }
-                
+
                 // Read chunk length and compression
                 let length_data = &data[chunk_offset..chunk_offset + 4];
                 let length = u32::from_be_bytes([
-                    length_data[0], length_data[1], 
-                    length_data[2], length_data[3]
+                    length_data[0],
+                    length_data[1],
+                    length_data[2],
+                    length_data[3],
                 ]) as usize;
-                
+
                 if length == 0 || chunk_offset + 4 + length > data.len() {
                     continue;
                 }
-                
+
                 let compression = data[chunk_offset + 4];
                 let chunk_data = data[chunk_offset + 5..chunk_offset + 4 + length].to_vec();
-                
+
                 let chunk = Chunk::new(x, z, compression, timestamp, chunk_data)?;
                 region.chunks[index] = Some(chunk);
             }
         }
-        
+
         Ok(region)
     }
 
@@ -287,31 +270,36 @@ impl Region {
         let mut current_offset = 2; // Start after header
 
         // Write chunks and build headers
-        for (index, chunk) in self.chunks.iter().enumerate().filter_map(|(i, c)| c.as_ref().map(|chunk| (i, chunk))) {
-                let chunk_data = chunk.get_raw_data();
-                let chunk_size = chunk_data.len() + 5;
-                let sectors_needed = chunk_size.div_ceil(SECTOR_SIZE);
-                
-                // Write location header (offset in sectors + sector count)
-                let header_pos = index * 4;
-                data[header_pos] = (current_offset >> 16) as u8;
-                data[header_pos + 1] = (current_offset >> 8) as u8;
-                data[header_pos + 2] = current_offset as u8;
-                data[header_pos + 3] = sectors_needed as u8;
-                
-                // Write timestamp header
-                let timestamp_pos = header_pos + SECTOR_SIZE;
-                let timestamp_bytes = chunk.timestamp.to_be_bytes();
-                data[timestamp_pos..timestamp_pos + 4].copy_from_slice(&timestamp_bytes);
-                
-                // Write chunk data
-                let data_pos = current_offset * SECTOR_SIZE;
-                let length_bytes = (chunk_data.len() + 1) as u32; // +1 for compression byte
-                data[data_pos..data_pos + 4].copy_from_slice(&length_bytes.to_be_bytes());
-                data[data_pos + 4] = chunk.compression;
-                data[data_pos + 5..data_pos + 5 + chunk_data.len()].copy_from_slice(chunk_data);
-                
-                current_offset += sectors_needed;
+        for (index, chunk) in self
+            .chunks
+            .iter()
+            .enumerate()
+            .filter_map(|(i, c)| c.as_ref().map(|chunk| (i, chunk)))
+        {
+            let chunk_data = chunk.get_raw_data();
+            let chunk_size = chunk_data.len() + 5;
+            let sectors_needed = chunk_size.div_ceil(SECTOR_SIZE);
+
+            // Write location header (offset in sectors + sector count)
+            let header_pos = index * 4;
+            data[header_pos] = (current_offset >> 16) as u8;
+            data[header_pos + 1] = (current_offset >> 8) as u8;
+            data[header_pos + 2] = current_offset as u8;
+            data[header_pos + 3] = sectors_needed as u8;
+
+            // Write timestamp header
+            let timestamp_pos = header_pos + SECTOR_SIZE;
+            let timestamp_bytes = chunk.timestamp.to_be_bytes();
+            data[timestamp_pos..timestamp_pos + 4].copy_from_slice(&timestamp_bytes);
+
+            // Write chunk data
+            let data_pos = current_offset * SECTOR_SIZE;
+            let length_bytes = (chunk_data.len() + 1) as u32; // +1 for compression byte
+            data[data_pos..data_pos + 4].copy_from_slice(&length_bytes.to_be_bytes());
+            data[data_pos + 4] = chunk.compression;
+            data[data_pos + 5..data_pos + 5 + chunk_data.len()].copy_from_slice(chunk_data);
+
+            current_offset += sectors_needed;
         }
 
         Ok(data)
@@ -319,36 +307,37 @@ impl Region {
 
     /// Get chunk at coordinates
     pub fn get_chunk(&self, x: i32, z: i32) -> Result<Option<&Chunk>> {
-        let index = Chunk::coords_to_index(x, z)
-            .ok_or(NbtError::InvalidCoordinates { x, z })?;
+        let index = Chunk::coords_to_index(x, z).ok_or(NbtError::InvalidCoordinates { x, z })?;
         Ok(self.chunks[index].as_ref())
     }
 
     /// Get mutable chunk at coordinates  
     pub fn get_chunk_mut(&mut self, x: i32, z: i32) -> Result<Option<&mut Chunk>> {
-        let index = Chunk::coords_to_index(x, z)
-            .ok_or(NbtError::InvalidCoordinates { x, z })?;
+        let index = Chunk::coords_to_index(x, z).ok_or(NbtError::InvalidCoordinates { x, z })?;
         Ok(self.chunks[index].as_mut())
     }
 
     /// Set chunk at coordinates
     pub fn set_chunk(&mut self, chunk: Chunk) -> Result<()> {
-        let index = Chunk::coords_to_index(chunk.x, chunk.z)
-            .ok_or(NbtError::InvalidCoordinates { x: chunk.x, z: chunk.z })?;
+        let index =
+            Chunk::coords_to_index(chunk.x, chunk.z).ok_or(NbtError::InvalidCoordinates {
+                x: chunk.x,
+                z: chunk.z,
+            })?;
         self.chunks[index] = Some(chunk);
         Ok(())
     }
 
     /// Remove chunk at coordinates
     pub fn remove_chunk(&mut self, x: i32, z: i32) -> Result<Option<Chunk>> {
-        let index = Chunk::coords_to_index(x, z)
-            .ok_or(NbtError::InvalidCoordinates { x, z })?;
+        let index = Chunk::coords_to_index(x, z).ok_or(NbtError::InvalidCoordinates { x, z })?;
         Ok(self.chunks[index].take())
     }
 
     /// Get all chunk positions that exist
     pub fn get_chunk_positions(&self) -> Vec<(i32, i32)> {
-        self.chunks.iter()
+        self.chunks
+            .iter()
             .filter_map(|chunk| chunk.as_ref().map(|c| (c.x, c.z)))
             .collect()
     }
@@ -388,10 +377,6 @@ impl PartialEq for Region {
     }
 }
 
-// ============================================================================
-// CONVENIENCE FUNCTIONS
-// ============================================================================
-
 /// Read region file from bytes
 #[cfg(feature = "region")]
 pub fn read_region(data: &[u8]) -> Result<Region> {
@@ -403,10 +388,6 @@ pub fn read_region(data: &[u8]) -> Result<Region> {
 pub fn write_region(region: &Region) -> Result<Vec<u8>> {
     region.write()
 }
-
-// ============================================================================
-// NON-FEATURE STUBS (for when region feature is disabled)
-// ============================================================================
 
 #[cfg(not(feature = "region"))]
 pub struct Chunk;
@@ -422,4 +403,4 @@ pub fn read_region(_data: &[u8]) -> Result<Region> {
 #[cfg(not(feature = "region"))]
 pub fn write_region(_region: &Region) -> Result<Vec<u8>> {
     Err(NbtError::Parse("Region feature not enabled".to_string()))
-} 
+}

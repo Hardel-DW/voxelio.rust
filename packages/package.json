@@ -1,6 +1,6 @@
 {
     "name": "@voxelio/nbt",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "type": "module",
     "exports": {
         ".": {
@@ -14,10 +14,11 @@
         "dist/**/*.wasm"
     ],
     "scripts": {
-        "build:wasm": "cd ../crates/nbt-wasm && cargo build --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir ../../packages/src ../../target/wasm32-unknown-unknown/release/nbt_wasm.wasm",
+        "build:wasm": "cd ../libs && cargo build --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir ../packages/src ../target/wasm32-unknown-unknown/release/nbt.wasm",
         "build:ts": "tsdown",
         "build": "npm run build:wasm && npm run build:ts",
         "test": "vitest",
+        "bench": "vitest bench",
         "check": "tsc --noEmit"
     },
     "dependencies": {},

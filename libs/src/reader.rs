@@ -17,7 +17,11 @@ pub struct NbtReader<'a> {
 
 impl<'a> NbtReader<'a> {
     pub fn new(data: &'a [u8], endian: Endian) -> Self {
-        Self { data, cursor: 0, endian }
+        Self {
+            data,
+            cursor: 0,
+            endian,
+        }
     }
 
     pub fn remaining(&self) -> usize {
@@ -79,7 +83,8 @@ impl<'a> NbtReader<'a> {
     pub fn read_string(&mut self) -> Result<String> {
         let len = self.read_i16()? as usize;
         let bytes = self.read_bytes(len)?;
-        String::from_utf8(bytes.to_vec()).map_err(|e| NbtError::Parse(format!("Invalid UTF-8: {}", e)))
+        String::from_utf8(bytes.to_vec())
+            .map_err(|e| NbtError::Parse(format!("Invalid UTF-8: {}", e)))
     }
 
     pub fn read_tag(&mut self, tag_type: u8) -> Result<NbtTag> {
@@ -114,40 +119,44 @@ impl<'a> NbtReader<'a> {
         let tag_type = self.read_u8()?;
         let len = self.read_i32()? as usize;
         let mut items = Vec::with_capacity(len);
-        
+
         for _ in 0..len {
             items.push(self.read_tag(tag_type)?);
         }
-        
+
         Ok(NbtTag::List { tag_type, items })
     }
 
     fn read_compound(&mut self) -> Result<NbtTag> {
         let mut map = HashMap::new();
-        
+
         loop {
             let tag_type = self.read_u8()?;
-            if tag_type == 0 { break; }
-            
+            if tag_type == 0 {
+                break;
+            }
+
             let name = self.read_string()?;
             let value = self.read_tag(tag_type)?;
             map.insert(name, value);
         }
-        
+
         Ok(NbtTag::Compound(map))
     }
-    
+
     /// Parse seulement les champs spécifiés pour optimiser la performance
     pub fn read_compound_selective(&mut self, wanted_fields: &[&str]) -> Result<NbtTag> {
         let mut map = HashMap::new();
         let wanted_set: HashSet<&str> = wanted_fields.iter().copied().collect();
-        
+
         loop {
             let tag_type = self.read_u8()?;
-            if tag_type == 0 { break; }
-            
+            if tag_type == 0 {
+                break;
+            }
+
             let name = self.read_string()?;
-            
+
             if wanted_set.contains(name.as_str()) {
                 let value = self.read_tag(tag_type)?;
                 map.insert(name, value);
@@ -156,7 +165,7 @@ impl<'a> NbtReader<'a> {
                 self.skip_tag(tag_type)?;
             }
         }
-        
+
         Ok(NbtTag::Compound(map))
     }
 
@@ -181,44 +190,56 @@ impl<'a> NbtReader<'a> {
     // Streaming methods
     pub fn skip_tag(&mut self, tag_type: u8) -> Result<()> {
         match tag_type {
-            0 => {},
-            1 => { self.cursor += 1; },
-            2 => { self.cursor += 2; },
-            3 => { self.cursor += 4; },
-            4 => { self.cursor += 8; },
-            5 => { self.cursor += 4; },
-            6 => { self.cursor += 8; },
+            0 => {}
+            1 => {
+                self.cursor += 1;
+            }
+            2 => {
+                self.cursor += 2;
+            }
+            3 => {
+                self.cursor += 4;
+            }
+            4 => {
+                self.cursor += 8;
+            }
+            5 => {
+                self.cursor += 4;
+            }
+            6 => {
+                self.cursor += 8;
+            }
             7 => {
                 let len = self.read_i32()? as usize;
                 self.cursor += len;
-            },
+            }
             8 => {
                 let len = self.read_i16()? as usize;
                 self.cursor += len;
-            },
+            }
             9 => {
                 let list_type = self.read_u8()?;
                 let len = self.read_i32()? as usize;
                 for _ in 0..len {
                     self.skip_tag(list_type)?;
                 }
-            },
-            10 => {
-                loop {
-                    let tag_type = self.read_u8()?;
-                    if tag_type == 0 { break; }
-                    self.read_string()?;
-                    self.skip_tag(tag_type)?;
+            }
+            10 => loop {
+                let tag_type = self.read_u8()?;
+                if tag_type == 0 {
+                    break;
                 }
+                self.read_string()?;
+                self.skip_tag(tag_type)?;
             },
             11 => {
                 let len = self.read_i32()? as usize;
                 self.cursor += len * 4;
-            },
+            }
             12 => {
                 let len = self.read_i32()? as usize;
                 self.cursor += len * 8;
-            },
+            }
             _ => return Err(NbtError::InvalidTagType(tag_type)),
         }
         Ok(())
@@ -227,15 +248,15 @@ impl<'a> NbtReader<'a> {
     pub fn find_path(&mut self, path: &str) -> Result<Option<NbtTag>> {
         let original_cursor = self.cursor;
         self.cursor = 0;
-        
+
         let tag_type = self.read_u8()?;
         if tag_type != 10 {
             return Err(NbtError::InvalidTagType(tag_type));
         }
-        
+
         let _root_name = self.read_string()?;
         let result = self.find_in_compound(path);
-        
+
         self.cursor = original_cursor;
         result
     }
@@ -243,17 +264,19 @@ impl<'a> NbtReader<'a> {
     fn find_in_compound(&mut self, target_path: &str) -> Result<Option<NbtTag>> {
         loop {
             let tag_type = self.read_u8()?;
-            if tag_type == 0 { break; }
-            
+            if tag_type == 0 {
+                break;
+            }
+
             let name = self.read_string()?;
-            
+
             if name == target_path {
                 return Ok(Some(self.read_tag(tag_type)?));
             }
-            
+
             self.skip_tag(tag_type)?;
         }
-        
+
         Ok(None)
     }
 }
@@ -323,7 +346,7 @@ impl NbtWriter {
 
     pub fn write_tag(&mut self, tag: &NbtTag) -> Result<()> {
         match tag {
-            NbtTag::End => {},
+            NbtTag::End => {}
             NbtTag::Byte(v) => self.write_i8(*v),
             NbtTag::Short(v) => self.write_i16(*v),
             NbtTag::Int(v) => self.write_i32(*v),
@@ -377,4 +400,4 @@ impl NbtWriter {
             self.write_i64(long);
         }
     }
-} 
+}

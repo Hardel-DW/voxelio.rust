@@ -1,23 +1,20 @@
-use nbt_core::{format_snbt, format_snbt_pretty, parse_snbt};
-use nbt_core::{CompressionFormat, NbtFile, NbtTag};
+use nbt::{format_snbt, format_snbt_pretty, parse_snbt};
+use nbt::{CompressionFormat, NbtFile, NbtTag};
 use std::collections::HashMap;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    println!("=== NBT Demo ===");
-
-    // Create a simple NBT structure
     let mut player = HashMap::new();
     player.insert("Name".to_string(), NbtTag::String("Steve".to_string()));
     player.insert("Level".to_string(), NbtTag::Int(30));
     player.insert("Health".to_string(), NbtTag::Double(20.0));
     player.insert("Hardcore".to_string(), NbtTag::Byte(0));
 
-    // Position as list
     let position = vec![
         NbtTag::Double(128.5),
         NbtTag::Double(64.0),
         NbtTag::Double(-256.3),
     ];
+
     player.insert(
         "Pos".to_string(),
         NbtTag::List {
@@ -26,7 +23,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         },
     );
 
-    // Inventory
     let mut inventory = Vec::new();
     for i in 0..5 {
         let mut item = HashMap::new();
@@ -53,8 +49,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let nbt_root = NbtTag::Compound(root);
 
     println!("1. Created NBT structure");
-
-    // Test SNBT formatting
     let snbt_compact = format_snbt(&nbt_root);
     println!(
         "2. SNBT (compact): {}",
@@ -67,11 +61,9 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         &snbt_pretty[..200.min(snbt_pretty.len())]
     ); // First 200 chars
 
-    // Test parsing back
     let _parsed_nbt = parse_snbt(&snbt_compact)?;
     println!("4. Parsed SNBT back to NBT successfully");
 
-    // Test NBT file operations
     let nbt_file = NbtFile::new(
         nbt_root.clone(),
         "Data".to_string(),
@@ -80,13 +72,11 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let compressed_data = nbt_file.write()?;
     println!("5. Compressed NBT size: {} bytes", compressed_data.len());
 
-    // Read back
     let decompressed_file = NbtFile::read(&compressed_data)?;
     println!("6. Decompressed NBT successfully");
     println!("   Root name: {}", decompressed_file.root_name);
     println!("   Compression: {:?}", decompressed_file.compression);
 
-    // Test convenience methods
     let data_version = decompressed_file.get_number("DataVersion");
     println!("7. DataVersion: {}", data_version);
 
@@ -95,8 +85,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             println!("   Player name: {}", name);
         }
     }
-
-    println!("=== Demo completed successfully ===");
 
     Ok(())
 }
