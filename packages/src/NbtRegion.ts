@@ -1,5 +1,5 @@
 import { ensureWasmInit } from "./wasm";
-import { nbt_region_read, nbt_region_write, nbt_region_dispose } from "./nbt_wasm";
+import { nbt_region_read, nbt_region_write, nbt_region_dispose } from "./nbt";
 
 export class NbtRegion {
     private handle: number;

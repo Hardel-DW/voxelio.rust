@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { initSync } from "./nbt_wasm";
+import { initSync } from "./nbt";
 
 let wasmInitialized = false;
 

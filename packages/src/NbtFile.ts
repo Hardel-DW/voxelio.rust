@@ -1,4 +1,4 @@
-import { nbt_file_read, nbt_file_write, nbt_file_dispose, nbt_get_string, nbt_get_number, nbt_get_root, nbt_file_set_list_item_string } from "./nbt_wasm";
+import { nbt_file_read, nbt_file_write, nbt_file_dispose, nbt_get_string, nbt_get_number, nbt_get_root, nbt_file_set_list_item_string } from "./nbt";
 import { NbtTag } from "./NbtTag";
 import { ensureWasmInit } from "./wasm";
 
