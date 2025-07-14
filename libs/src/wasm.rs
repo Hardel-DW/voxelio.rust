@@ -142,15 +142,14 @@ pub fn nbt_tag_as_number(handle: u32) -> std::result::Result<f64, JsValue> {
 #[wasm_bindgen]
 pub fn nbt_tag_get_compound_keys(handle: u32) -> std::result::Result<Vec<String>, JsValue> {
     let store = TAG_STORE.lock().unwrap();
-    match store.tags.get(&handle) {
-        Some(tag) => {
-            if let Some(compound) = tag.as_compound() {
-                Ok(compound.keys().cloned().collect())
-            } else {
-                Ok(vec![])
-            }
-        }
-        None => Err(JsValue::from_str("Invalid tag handle")),
+    let tag = store
+        .tags
+        .get(&handle)
+        .ok_or_else(|| JsValue::from_str("Invalid tag handle"))?;
+
+    match tag.as_compound() {
+        Some(compound) => Ok(compound.keys().cloned().collect()),
+        None => Ok(vec![]),
     }
 }
 
@@ -158,20 +157,19 @@ pub fn nbt_tag_get_compound_keys(handle: u32) -> std::result::Result<Vec<String>
 pub fn nbt_tag_get_compound_value(handle: u32, key: &str) -> std::result::Result<u32, JsValue> {
     let tag_value = {
         let store = TAG_STORE.lock().unwrap();
-        match store.tags.get(&handle) {
-            Some(tag) => {
-                if let Some(compound) = tag.as_compound() {
-                    if let Some(value) = compound.get(key) {
-                        value.clone()
-                    } else {
-                        return Err(JsValue::from_str("Key not found"));
-                    }
-                } else {
-                    return Err(JsValue::from_str("Not a compound tag"));
-                }
-            }
-            None => return Err(JsValue::from_str("Invalid tag handle")),
-        }
+        let tag = store
+            .tags
+            .get(&handle)
+            .ok_or_else(|| JsValue::from_str("Invalid tag handle"))?;
+
+        let compound = tag
+            .as_compound()
+            .ok_or_else(|| JsValue::from_str("Not a compound tag"))?;
+
+        compound
+            .get(key)
+            .ok_or_else(|| JsValue::from_str("Key not found"))?
+            .clone()
     };
 
     let mut tag_store = TAG_STORE.lock().unwrap();
@@ -184,15 +182,14 @@ pub fn nbt_tag_get_compound_value(handle: u32, key: &str) -> std::result::Result
 #[wasm_bindgen]
 pub fn nbt_tag_get_list_length(handle: u32) -> std::result::Result<u32, JsValue> {
     let store = TAG_STORE.lock().unwrap();
-    match store.tags.get(&handle) {
-        Some(tag) => {
-            if let Some((_, items)) = tag.as_list() {
-                Ok(items.len() as u32)
-            } else {
-                Ok(0)
-            }
-        }
-        None => Err(JsValue::from_str("Invalid tag handle")),
+    let tag = store
+        .tags
+        .get(&handle)
+        .ok_or_else(|| JsValue::from_str("Invalid tag handle"))?;
+
+    match tag.as_list() {
+        Some((_, items)) => Ok(items.len() as u32),
+        None => Ok(0),
     }
 }
 
@@ -200,20 +197,19 @@ pub fn nbt_tag_get_list_length(handle: u32) -> std::result::Result<u32, JsValue>
 pub fn nbt_tag_get_list_item(handle: u32, index: u32) -> std::result::Result<u32, JsValue> {
     let list_item = {
         let store = TAG_STORE.lock().unwrap();
-        match store.tags.get(&handle) {
-            Some(tag) => {
-                if let Some((_, items)) = tag.as_list() {
-                    if let Some(item) = items.get(index as usize) {
-                        item.clone()
-                    } else {
-                        return Err(JsValue::from_str("Index out of bounds"));
-                    }
-                } else {
-                    return Err(JsValue::from_str("Not a list tag"));
-                }
-            }
-            None => return Err(JsValue::from_str("Invalid tag handle")),
-        }
+        let tag = store
+            .tags
+            .get(&handle)
+            .ok_or_else(|| JsValue::from_str("Invalid tag handle"))?;
+
+        let (_, items) = tag
+            .as_list()
+            .ok_or_else(|| JsValue::from_str("Not a list tag"))?;
+
+        items
+            .get(index as usize)
+            .ok_or_else(|| JsValue::from_str("Index out of bounds"))?
+            .clone()
     };
 
     let mut tag_store = TAG_STORE.lock().unwrap();
@@ -232,34 +228,34 @@ pub fn nbt_file_set_list_item_string(
     value: &str,
 ) -> std::result::Result<(), JsValue> {
     let mut file_store = FILE_STORE.lock().unwrap();
-    match file_store.files.get_mut(&file_handle) {
-        Some(file) => {
-            if let Some(compound) = file.root.as_compound_mut() {
-                if let Some(palette_tag) = compound.get_mut(path) {
-                    if let Some((_, items)) = palette_tag.as_list_mut() {
-                        if let Some(item) = items.get_mut(index as usize) {
-                            if let Some(item_compound) = item.as_compound_mut() {
-                                item_compound
-                                    .insert(key.to_string(), NbtTag::String(value.to_string()));
-                                Ok(())
-                            } else {
-                                Err(JsValue::from_str("List item is not a compound tag"))
-                            }
-                        } else {
-                            Err(JsValue::from_str("Index out of bounds"))
-                        }
-                    } else {
-                        Err(JsValue::from_str("Not a list tag"))
-                    }
-                } else {
-                    Err(JsValue::from_str("Path not found"))
-                }
-            } else {
-                Err(JsValue::from_str("Root is not a compound tag"))
-            }
-        }
-        None => Err(JsValue::from_str("Invalid file handle")),
-    }
+    let file = file_store
+        .files
+        .get_mut(&file_handle)
+        .ok_or_else(|| JsValue::from_str("Invalid file handle"))?;
+
+    let compound = file
+        .root
+        .as_compound_mut()
+        .ok_or_else(|| JsValue::from_str("Root is not a compound tag"))?;
+
+    let list_tag = compound
+        .get_mut(path)
+        .ok_or_else(|| JsValue::from_str("Path not found"))?;
+
+    let (_, items) = list_tag
+        .as_list_mut()
+        .ok_or_else(|| JsValue::from_str("Not a list tag"))?;
+
+    let item = items
+        .get_mut(index as usize)
+        .ok_or_else(|| JsValue::from_str("Index out of bounds"))?;
+
+    let item_compound = item
+        .as_compound_mut()
+        .ok_or_else(|| JsValue::from_str("List item is not a compound tag"))?;
+
+    item_compound.insert(key.to_string(), NbtTag::String(value.to_string()));
+    Ok(())
 }
 
 #[wasm_bindgen]
@@ -271,71 +267,71 @@ pub fn nbt_tag_dispose(handle: u32) {
 #[wasm_bindgen]
 pub fn nbt_tag_get_string(handle: u32, key: &str) -> std::result::Result<String, JsValue> {
     let store = TAG_STORE.lock().unwrap();
-    match store.tags.get(&handle) {
-        Some(tag) => {
-            if let Some(compound) = tag.as_compound() {
-                if let Some(value) = compound.get(key) {
-                    Ok(value.as_string().to_string())
-                } else {
-                    Err(JsValue::from_str("Key not found"))
-                }
-            } else {
-                Err(JsValue::from_str("Not a compound tag"))
-            }
-        }
-        None => Err(JsValue::from_str("Invalid tag handle")),
-    }
+    let tag = store
+        .tags
+        .get(&handle)
+        .ok_or_else(|| JsValue::from_str("Invalid tag handle"))?;
+
+    let compound = tag
+        .as_compound()
+        .ok_or_else(|| JsValue::from_str("Not a compound tag"))?;
+
+    let value = compound
+        .get(key)
+        .ok_or_else(|| JsValue::from_str("Key not found"))?;
+
+    Ok(value.as_string().to_string())
 }
 
 #[wasm_bindgen]
 pub fn nbt_tag_get_number(handle: u32, key: &str) -> std::result::Result<f64, JsValue> {
     let store = TAG_STORE.lock().unwrap();
-    match store.tags.get(&handle) {
-        Some(tag) => {
-            if let Some(compound) = tag.as_compound() {
-                if let Some(value) = compound.get(key) {
-                    Ok(value.as_number())
-                } else {
-                    Err(JsValue::from_str("Key not found"))
-                }
-            } else {
-                Err(JsValue::from_str("Not a compound tag"))
-            }
-        }
-        None => Err(JsValue::from_str("Invalid tag handle")),
-    }
+    let tag = store
+        .tags
+        .get(&handle)
+        .ok_or_else(|| JsValue::from_str("Invalid tag handle"))?;
+
+    let compound = tag
+        .as_compound()
+        .ok_or_else(|| JsValue::from_str("Not a compound tag"))?;
+
+    let value = compound
+        .get(key)
+        .ok_or_else(|| JsValue::from_str("Key not found"))?;
+
+    Ok(value.as_number())
 }
 
 #[wasm_bindgen]
 pub fn nbt_tag_set_string(handle: u32, key: &str, value: &str) -> std::result::Result<(), JsValue> {
     let mut store = TAG_STORE.lock().unwrap();
-    match store.tags.get_mut(&handle) {
-        Some(tag) => {
-            if let Some(compound) = tag.as_compound_mut() {
-                compound.insert(key.to_string(), NbtTag::String(value.to_string()));
-                Ok(())
-            } else {
-                Err(JsValue::from_str("Not a compound tag"))
-            }
-        }
-        None => Err(JsValue::from_str("Invalid tag handle")),
-    }
+    let tag = store
+        .tags
+        .get_mut(&handle)
+        .ok_or_else(|| JsValue::from_str("Invalid tag handle"))?;
+
+    let compound = tag
+        .as_compound_mut()
+        .ok_or_else(|| JsValue::from_str("Not a compound tag"))?;
+
+    compound.insert(key.to_string(), NbtTag::String(value.to_string()));
+    Ok(())
 }
 
 #[wasm_bindgen]
 pub fn nbt_tag_set_number(handle: u32, key: &str, value: f64) -> std::result::Result<(), JsValue> {
     let mut store = TAG_STORE.lock().unwrap();
-    match store.tags.get_mut(&handle) {
-        Some(tag) => {
-            if let Some(compound) = tag.as_compound_mut() {
-                compound.insert(key.to_string(), NbtTag::Double(value));
-                Ok(())
-            } else {
-                Err(JsValue::from_str("Not a compound tag"))
-            }
-        }
-        None => Err(JsValue::from_str("Invalid tag handle")),
-    }
+    let tag = store
+        .tags
+        .get_mut(&handle)
+        .ok_or_else(|| JsValue::from_str("Invalid tag handle"))?;
+
+    let compound = tag
+        .as_compound_mut()
+        .ok_or_else(|| JsValue::from_str("Not a compound tag"))?;
+
+    compound.insert(key.to_string(), NbtTag::Double(value));
+    Ok(())
 }
 
 #[cfg(feature = "region")]
