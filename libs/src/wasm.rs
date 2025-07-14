@@ -59,6 +59,29 @@ pub fn nbt_file_read(data: &[u8]) -> std::result::Result<u32, JsValue> {
 }
 
 #[wasm_bindgen]
+pub fn nbt_file_read_lazy(data: &[u8], fields: js_sys::Array) -> std::result::Result<u32, JsValue> {
+    let fields_vec: Vec<String> = fields
+        .iter()
+        .map(|val| val.as_string().unwrap_or_default())
+        .collect();
+
+    let fields_str: Vec<&str> = fields_vec.iter().map(|s| s.as_str()).collect();
+    match NbtFile::read_lazy(data, &fields_str) {
+        Ok(file) => {
+            let mut store = FILE_STORE.lock().unwrap();
+            let id = store.next_id;
+            store.next_id += 1;
+            store.files.insert(id, file);
+            Ok(id)
+        }
+        Err(e) => Err(JsValue::from_str(&format!(
+            "Failed to read NBT lazily: {}",
+            e
+        ))),
+    }
+}
+
+#[wasm_bindgen]
 pub fn nbt_file_write(handle: u32) -> std::result::Result<Vec<u8>, JsValue> {
     let store = FILE_STORE.lock().unwrap();
     match store.files.get(&handle) {

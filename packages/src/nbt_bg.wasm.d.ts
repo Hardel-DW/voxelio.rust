@@ -2,6 +2,7 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const nbt_file_read: (a: number, b: number, c: number) => void;
+export const nbt_file_read_lazy: (a: number, b: number, c: number, d: number) => void;
 export const nbt_file_write: (a: number, b: number) => void;
 export const nbt_file_dispose: (a: number) => void;
 export const nbt_get_string: (a: number, b: number, c: number, d: number) => void;
@@ -23,7 +24,7 @@ export const nbt_tag_set_number: (a: number, b: number, c: number, d: number, e:
 export const nbt_region_read: (a: number, b: number, c: number) => void;
 export const nbt_region_write: (a: number, b: number) => void;
 export const nbt_region_dispose: (a: number) => void;
-export const __wbindgen_add_to_stack_pointer: (a: number) => number;
 export const __wbindgen_export_0: (a: number, b: number) => number;
-export const __wbindgen_export_1: (a: number, b: number, c: number) => void;
-export const __wbindgen_export_2: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_export_1: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_add_to_stack_pointer: (a: number) => number;
+export const __wbindgen_export_2: (a: number, b: number, c: number) => void;

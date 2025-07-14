@@ -43,6 +43,12 @@ path = "bench/streaming_bench.rs"
 harness = false
 required-features = ["bench"] 
 
+[[bench]]
+name = "compression_bench"
+path = "bench/compression_bench.rs"
+harness = false
+required-features = ["bench"] 
+
 [[example]]
 name = "edit"
 path = "examples/edit.rs"

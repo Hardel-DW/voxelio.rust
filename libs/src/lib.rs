@@ -3,7 +3,7 @@ mod reader;
 mod tag;
 
 #[cfg(feature = "compression")]
-mod compression;
+pub mod compression;
 
 #[cfg(feature = "snbt")]
 mod snbt;

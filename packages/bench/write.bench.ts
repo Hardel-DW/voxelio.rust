@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { NbtFile } from "../src/NbtFile";
+import { NbtFile } from "../dist/index";
 import { bench } from "vitest";
 
 const data = readFileSync('./examples/cube.nbt');

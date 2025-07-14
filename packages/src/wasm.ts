@@ -10,7 +10,7 @@ export async function ensureWasmInit(): Promise<void> {
         try {
             const __filename = fileURLToPath(import.meta.url);
             const __dirname = dirname(__filename);
-            const wasmPath = join(__dirname, 'nbt_wasm_bg.wasm');
+            const wasmPath = join(__dirname, 'nbt_bg.wasm');
             const wasmBuffer = readFileSync(wasmPath);
             initSync({ module: wasmBuffer });
             wasmInitialized = true;

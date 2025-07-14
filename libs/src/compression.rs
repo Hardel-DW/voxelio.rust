@@ -42,7 +42,7 @@ pub fn detect_compression(data: &[u8]) -> CompressionFormat {
     CompressionFormat::None
 }
 
-fn decompress_optimized(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> {
+pub fn decompress_optimized(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> {
     match format {
         CompressionFormat::None => Ok(data.to_vec()),
         #[cfg(feature = "compression")]
@@ -68,7 +68,7 @@ fn decompress_optimized(data: &[u8], format: CompressionFormat) -> Result<Vec<u8
     }
 }
 
-fn compress_data(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> {
+pub fn compress_data(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> {
     match format {
         CompressionFormat::None => Ok(data.to_vec()),
         #[cfg(feature = "compression")]

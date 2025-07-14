@@ -1,6 +1,6 @@
 {
     "name": "@voxelio/nbt",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "type": "module",
     "exports": {
         ".": {
@@ -15,7 +15,7 @@
     ],
     "scripts": {
         "build:wasm": "cd ../libs && cargo build --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir ../packages/src ../target/wasm32-unknown-unknown/release/nbt.wasm",
-        "build:ts": "tsdown",
+        "build:ts": "tsdown && copy src\\nbt_bg.wasm dist\\nbt_bg.wasm",
         "build": "npm run build:wasm && npm run build:ts",
         "test": "vitest",
         "bench": "vitest bench",
