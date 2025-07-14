@@ -44,8 +44,16 @@ harness = false
 required-features = ["bench"] 
 
 [[example]]
-name = "cube_editor"
-path = "examples/cube_editor.rs"
+name = "edit"
+path = "examples/edit.rs"
+
+[[example]]
+name = "create"
+path = "examples/create.rs"
+
+[[example]]
+name = "read"
+path = "examples/read.rs"
 
 [[example]]
 name = "demo"

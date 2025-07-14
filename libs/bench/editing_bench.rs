@@ -1,5 +1,5 @@
-use nbt_core::{NbtFile, NbtTag};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use nbt::{NbtFile, NbtTag};
 
 fn edit_nbt_file(nbt_file: &mut NbtFile) {
     if let NbtTag::Compound(root) = &mut nbt_file.root {
@@ -19,10 +19,10 @@ fn edit_nbt_file(nbt_file: &mut NbtFile) {
 
 fn bench_editing(c: &mut Criterion) {
     let cube_data = include_bytes!("mock/cube.nbt");
-    
+
     let mut group = c.benchmark_group("Editing");
-    group.sample_size(20);  // Reduced from default 100
-    
+    group.sample_size(20); // Reduced from default 100
+
     group.bench_function("edit_10x", |b| {
         b.iter(|| {
             let mut nbt_file = NbtFile::read(cube_data).unwrap();
@@ -32,7 +32,7 @@ fn bench_editing(c: &mut Criterion) {
             black_box(())
         })
     });
-    
+
     group.finish();
 }
 
