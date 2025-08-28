@@ -1,12 +1,8 @@
 use crate::{Endian, NbtError, NbtReader, NbtTag, NbtWriter, Result};
 
-#[cfg(feature = "compression")]
 use flate2::read::{GzDecoder, ZlibDecoder};
-#[cfg(feature = "compression")]
 use flate2::write::{GzEncoder, ZlibEncoder};
-#[cfg(feature = "compression")]
 use flate2::Compression;
-#[cfg(feature = "compression")]
 use std::io::{Read, Write};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -45,7 +41,6 @@ pub fn detect_compression(data: &[u8]) -> CompressionFormat {
 pub fn decompress_optimized(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> {
     match format {
         CompressionFormat::None => Ok(data.to_vec()),
-        #[cfg(feature = "compression")]
         CompressionFormat::Gzip => {
             let mut decoder = GzDecoder::new(data);
             let mut result = Vec::with_capacity(data.len() * 3); // Conservative estimation
@@ -54,7 +49,6 @@ pub fn decompress_optimized(data: &[u8], format: CompressionFormat) -> Result<Ve
             })?;
             Ok(result)
         }
-        #[cfg(feature = "compression")]
         CompressionFormat::Zlib => {
             let mut decoder = ZlibDecoder::new(data);
             let mut result = Vec::with_capacity(data.len() * 3);
@@ -63,15 +57,12 @@ pub fn decompress_optimized(data: &[u8], format: CompressionFormat) -> Result<Ve
             })?;
             Ok(result)
         }
-        #[cfg(not(feature = "compression"))]
-        CompressionFormat::Gzip | CompressionFormat::Zlib => Err(NbtError::InvalidFormat),
     }
 }
 
 pub fn compress_data(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> {
     match format {
         CompressionFormat::None => Ok(data.to_vec()),
-        #[cfg(feature = "compression")]
         CompressionFormat::Gzip => {
             let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
             encoder.write_all(data).map_err(|e| {
@@ -81,7 +72,6 @@ pub fn compress_data(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> 
                 .finish()
                 .map_err(|e| NbtError::compression_error(format!("Gzip finish failed: {e}")))
         }
-        #[cfg(feature = "compression")]
         CompressionFormat::Zlib => {
             let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
             encoder.write_all(data).map_err(|e| {
@@ -91,8 +81,6 @@ pub fn compress_data(data: &[u8], format: CompressionFormat) -> Result<Vec<u8>> 
                 .finish()
                 .map_err(|e| NbtError::compression_error(format!("Zlib finish failed: {e}")))
         }
-        #[cfg(not(feature = "compression"))]
-        CompressionFormat::Gzip | CompressionFormat::Zlib => Err(NbtError::InvalidFormat),
     }
 }
 
@@ -203,7 +191,6 @@ impl NbtFile {
     }
 }
 
-#[cfg(feature = "compression")]
 impl NbtFile {
     pub fn compress_gzip(data: &[u8]) -> Result<Vec<u8>> {
         compress_data(data, CompressionFormat::Gzip)

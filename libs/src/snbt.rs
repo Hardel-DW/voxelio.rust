@@ -1,7 +1,6 @@
 use crate::{NbtError, NbtTag, Result};
 use std::collections::HashMap;
 
-#[cfg(feature = "snbt")]
 use winnow::{
     ascii::{digit1, space0},
     combinator::{alt, delimited, opt, preceded, separated, terminated},
@@ -9,23 +8,19 @@ use winnow::{
     PResult, Parser,
 };
 
-#[cfg(feature = "snbt")]
 type Input<'i> = &'i str;
 
 /// Format NBT tag to SNBT string
-#[cfg(feature = "snbt")]
 pub fn format_snbt(tag: &NbtTag) -> String {
     format_tag(tag, false)
 }
 
 /// Format NBT tag to pretty SNBT string with indentation
-#[cfg(feature = "snbt")]
 pub fn format_snbt_pretty(tag: &NbtTag) -> String {
     format_tag(tag, true)
 }
 
 /// Parse SNBT string to NBT tag
-#[cfg(feature = "snbt")]
 pub fn parse_snbt(input: &str) -> Result<NbtTag> {
     let mut input = input.trim();
     match parse_value.parse_next(&mut input) {
@@ -44,7 +39,6 @@ pub fn parse_snbt(input: &str) -> Result<NbtTag> {
 }
 
 /// Parse any NBT value
-#[cfg(feature = "snbt")]
 fn parse_value(input: &mut Input) -> PResult<NbtTag> {
     delimited(
         space0,
@@ -61,7 +55,6 @@ fn parse_value(input: &mut Input) -> PResult<NbtTag> {
 }
 
 /// Parse compound: {key:value,key:value}
-#[cfg(feature = "snbt")]
 fn parse_compound(input: &mut Input) -> PResult<NbtTag> {
     let pairs = delimited(
         ('{', space0),
@@ -78,7 +71,6 @@ fn parse_compound(input: &mut Input) -> PResult<NbtTag> {
 }
 
 /// Parse compound entry: key:value
-#[cfg(feature = "snbt")]
 fn parse_compound_entry(input: &mut Input) -> PResult<(String, NbtTag)> {
     let key = delimited(space0, parse_string_key, space0);
     let value = preceded((':', space0), parse_value);
@@ -86,7 +78,6 @@ fn parse_compound_entry(input: &mut Input) -> PResult<(String, NbtTag)> {
 }
 
 /// Parse string key (quoted or unquoted)
-#[cfg(feature = "snbt")]
 fn parse_string_key(input: &mut Input) -> PResult<String> {
     alt((
         parse_quoted_string.map(|tag| tag.as_string().to_string()),
@@ -96,7 +87,6 @@ fn parse_string_key(input: &mut Input) -> PResult<String> {
 }
 
 /// Parse list: [value,value,value]
-#[cfg(feature = "snbt")]
 fn parse_list(input: &mut Input) -> PResult<NbtTag> {
     let items = delimited(
         ('[', space0),
@@ -126,7 +116,6 @@ fn parse_list(input: &mut Input) -> PResult<NbtTag> {
 }
 
 /// Parse typed arrays: [B;1,2,3] [I;1,2,3] [L;1,2,3]
-#[cfg(feature = "snbt")]
 fn parse_array(input: &mut Input) -> PResult<NbtTag> {
     let (array_type, items): (char, Vec<NbtTag>) = delimited(
         ('[', space0),
@@ -162,13 +151,11 @@ fn parse_array(input: &mut Input) -> PResult<NbtTag> {
 }
 
 /// Parse array element (must be numeric)
-#[cfg(feature = "snbt")]
 fn parse_array_element(input: &mut Input) -> PResult<NbtTag> {
     delimited(space0, parse_number, space0).parse_next(input)
 }
 
 /// Parse quoted string: "value" or 'value'
-#[cfg(feature = "snbt")]
 fn parse_quoted_string(input: &mut Input) -> PResult<NbtTag> {
     let quote = one_of(['"', '\'']).parse_next(input)?;
     let content = take_till(0.., move |c| c == quote).parse_next(input)?;
@@ -178,7 +165,6 @@ fn parse_quoted_string(input: &mut Input) -> PResult<NbtTag> {
 }
 
 /// Parse unquoted string (identifier-like)
-#[cfg(feature = "snbt")]
 fn parse_unquoted_string<'i>(input: &mut &'i str) -> PResult<&'i str> {
     take_while(1.., |c: char| {
         c.is_alphanumeric() || c == '_' || c == '-' || c == '.' || c == '+'
@@ -187,7 +173,6 @@ fn parse_unquoted_string<'i>(input: &mut &'i str) -> PResult<&'i str> {
 }
 
 /// Parse unquoted value (number, boolean, or fallback string)
-#[cfg(feature = "snbt")]
 fn parse_unquoted_value(input: &mut Input) -> PResult<NbtTag> {
     let value = parse_unquoted_string.parse_next(input)?;
 
@@ -205,7 +190,6 @@ fn parse_unquoted_value(input: &mut Input) -> PResult<NbtTag> {
 }
 
 /// Parse number with type suffixes
-#[cfg(feature = "snbt")]
 fn parse_number(input: &mut Input) -> PResult<NbtTag> {
     let start = *input;
     let _sign = opt(one_of(['+', '-'])).parse_next(input)?;
@@ -220,7 +204,6 @@ fn parse_number(input: &mut Input) -> PResult<NbtTag> {
 }
 
 /// Parse number from string with suffix handling
-#[cfg(feature = "snbt")]
 fn parse_number_from_str(s: &str) -> Result<NbtTag> {
     let s = s.trim();
 
@@ -291,12 +274,10 @@ fn parse_number_from_str(s: &str) -> Result<NbtTag> {
     }
 }
 
-#[cfg(feature = "snbt")]
 pub fn format_tag(tag: &NbtTag, pretty: bool) -> String {
     format_tag_with_indent(tag, 0, pretty)
 }
 
-#[cfg(feature = "snbt")]
 fn format_tag_with_indent(tag: &NbtTag, indent: usize, pretty: bool) -> String {
     match tag {
         NbtTag::End => String::new(),
@@ -321,7 +302,6 @@ fn format_tag_with_indent(tag: &NbtTag, indent: usize, pretty: bool) -> String {
     }
 }
 
-#[cfg(feature = "snbt")]
 fn format_string(s: &str) -> String {
     // Simple quoting - in production would need proper escaping
     if s.chars()
@@ -333,7 +313,6 @@ fn format_string(s: &str) -> String {
     }
 }
 
-#[cfg(feature = "snbt")]
 fn format_array<I>(prefix: &str, items: I, pretty: bool, indent: usize) -> String
 where
     I: Iterator<Item = String>,
@@ -354,7 +333,6 @@ where
     }
 }
 
-#[cfg(feature = "snbt")]
 fn format_list(items: &[NbtTag], pretty: bool, indent: usize) -> String {
     let formatted: Vec<String> = items
         .iter()
@@ -375,7 +353,6 @@ fn format_list(items: &[NbtTag], pretty: bool, indent: usize) -> String {
     }
 }
 
-#[cfg(feature = "snbt")]
 fn format_compound(map: &HashMap<String, NbtTag>, pretty: bool, indent: usize) -> String {
     let mut entries: Vec<String> = map
         .iter()
@@ -401,17 +378,3 @@ fn format_compound(map: &HashMap<String, NbtTag>, pretty: bool, indent: usize) -
     }
 }
 
-#[cfg(not(feature = "snbt"))]
-pub fn parse_snbt(_input: &str) -> Result<NbtTag> {
-    Err(NbtError::Parse("SNBT feature not enabled".to_string()))
-}
-
-#[cfg(not(feature = "snbt"))]
-pub fn format_snbt(_tag: &NbtTag) -> String {
-    String::new()
-}
-
-#[cfg(not(feature = "snbt"))]
-pub fn format_snbt_pretty(_tag: &NbtTag) -> String {
-    String::new()
-}

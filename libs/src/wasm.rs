@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 use wasm_bindgen::prelude::*;
 
-#[cfg(feature = "region")]
 use crate::region::Region;
 
 struct FileStore {
@@ -16,7 +15,6 @@ struct TagStore {
     next_id: u32,
 }
 
-#[cfg(feature = "region")]
 struct RegionStore {
     regions: HashMap<u32, Region>,
     next_id: u32,
@@ -36,7 +34,6 @@ static TAG_STORE: LazyLock<Mutex<TagStore>> = LazyLock::new(|| {
     })
 });
 
-#[cfg(feature = "region")]
 static REGION_STORE: LazyLock<Mutex<RegionStore>> = LazyLock::new(|| {
     Mutex::new(RegionStore {
         regions: HashMap::new(),
@@ -345,7 +342,6 @@ pub fn nbt_tag_set_number(handle: u32, key: &str, value: f64) -> std::result::Re
     Ok(())
 }
 
-#[cfg(feature = "region")]
 #[wasm_bindgen]
 pub fn nbt_region_read(data: &[u8]) -> std::result::Result<u32, JsValue> {
     match Region::read(data) {
@@ -360,7 +356,6 @@ pub fn nbt_region_read(data: &[u8]) -> std::result::Result<u32, JsValue> {
     }
 }
 
-#[cfg(feature = "region")]
 #[wasm_bindgen]
 pub fn nbt_region_write(handle: u32) -> std::result::Result<Vec<u8>, JsValue> {
     let store = REGION_STORE.lock().unwrap();
@@ -373,7 +368,6 @@ pub fn nbt_region_write(handle: u32) -> std::result::Result<Vec<u8>, JsValue> {
     }
 }
 
-#[cfg(feature = "region")]
 #[wasm_bindgen]
 pub fn nbt_region_dispose(handle: u32) {
     let mut store = REGION_STORE.lock().unwrap();

@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx vitest bench:*)"
+      "Bash(npx vitest bench:*)",
+      "Bash(cargo test)",
+      "Bash(cargo bench:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(npm test)",
+      "Bash(npm run bench:*)",
+      "Bash(npx vitest run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint)",
+      "Bash(cargo fmt:*)"
     ],
     "deny": [],
     "ask": []

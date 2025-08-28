@@ -2,8 +2,14 @@
 
 ## TypeScript
 
+### With Rust compression (WASM)
+
 - **Read Cube NBT Data:** 32ms (30.83 hz)
 - **Edit Cube NBT Data:** 181ms (5.53 hz)
+
+### With fflate (JavaScript)
+
+- **Read Cube NBT Data:** 23.36ms (42.81 hz)
 
 Les benchmarks utilisent la syntaxe `using` pour la gestion mémoire automatique.
 La lecture avec lazy loading charge seulement les champs DataVersion. L'édition

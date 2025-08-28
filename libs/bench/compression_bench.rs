@@ -1,7 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
-#[cfg(feature = "compression")]
-use nbt::compression::{
+use nbt::{
     compress_data, decompress_optimized, detect_compression, CompressionFormat,
 };
 

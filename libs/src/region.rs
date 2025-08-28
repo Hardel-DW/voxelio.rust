@@ -1,16 +1,10 @@
-#[cfg(feature = "region")]
 use crate::{CompressionFormat, Endian, NbtError, NbtFile, NbtTag, Result};
 
-#[cfg(feature = "region")]
 const REGION_SIZE: i32 = 32;
-#[cfg(feature = "region")]
 const CHUNK_COUNT: usize = (REGION_SIZE * REGION_SIZE) as usize;
-#[cfg(feature = "region")]
 const SECTOR_SIZE: usize = 4096;
-#[cfg(feature = "region")]
 const HEADER_SIZE: usize = 8192; // 2 sectors
 
-#[cfg(feature = "region")]
 #[derive(Debug)]
 pub struct Chunk {
     /// X coordinate (0-31 within region)
@@ -27,7 +21,6 @@ pub struct Chunk {
     cached_nbt: Option<NbtFile>,
 }
 
-#[cfg(feature = "region")]
 impl Chunk {
     /// Create a new chunk
     pub fn new(x: i32, z: i32, compression: u8, timestamp: u32, raw_data: Vec<u8>) -> Result<Self> {
@@ -139,7 +132,6 @@ impl Chunk {
     }
 }
 
-#[cfg(feature = "region")]
 impl Clone for Chunk {
     fn clone(&self) -> Self {
         Self {
@@ -153,7 +145,6 @@ impl Clone for Chunk {
     }
 }
 
-#[cfg(feature = "region")]
 impl PartialEq for Chunk {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x
@@ -164,13 +155,11 @@ impl PartialEq for Chunk {
     }
 }
 
-#[cfg(feature = "region")]
 #[derive(Debug)]
 pub struct Region {
     chunks: [Option<Chunk>; CHUNK_COUNT],
 }
 
-#[cfg(feature = "region")]
 impl Region {
     /// Create empty region
     pub fn new() -> Self {
@@ -363,14 +352,12 @@ impl Region {
     }
 }
 
-#[cfg(feature = "region")]
 impl Default for Region {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(feature = "region")]
 impl PartialEq for Region {
     fn eq(&self, other: &Self) -> bool {
         self.chunks == other.chunks
@@ -378,29 +365,13 @@ impl PartialEq for Region {
 }
 
 /// Read region file from bytes
-#[cfg(feature = "region")]
 pub fn read_region(data: &[u8]) -> Result<Region> {
     Region::read(data)
 }
 
 /// Write region to bytes
-#[cfg(feature = "region")]
 pub fn write_region(region: &Region) -> Result<Vec<u8>> {
     region.write()
 }
 
-#[cfg(not(feature = "region"))]
-pub struct Chunk;
-
-#[cfg(not(feature = "region"))]
-pub struct Region;
-
-#[cfg(not(feature = "region"))]
-pub fn read_region(_data: &[u8]) -> Result<Region> {
-    Err(NbtError::Parse("Region feature not enabled".to_string()))
-}
-
-#[cfg(not(feature = "region"))]
-pub fn write_region(_region: &Region) -> Result<Vec<u8>> {
-    Err(NbtError::Parse("Region feature not enabled".to_string()))
-}
+    
