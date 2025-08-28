@@ -34,7 +34,7 @@ fn bench_batch_processing(c: &mut Criterion) {
         b.iter(|| {
             let mut results = Vec::with_capacity(5);
             for _ in 0..5 {
-                let file = NbtFile::read(black_box(cube_data)).unwrap();
+                let file = NbtFile::read(black_box(cube_data), None).unwrap();
                 let result = extract_single_field(&file, "palette");
                 results.push(result);
             }
@@ -45,7 +45,7 @@ fn bench_batch_processing(c: &mut Criterion) {
     // Single file with reuse
     group.bench_function("single_file_10_ops", |b| {
         b.iter(|| {
-            let file = NbtFile::read(black_box(cube_data)).unwrap();
+            let file = NbtFile::read(black_box(cube_data), None).unwrap();
             let mut results = Vec::with_capacity(10);
 
             // 10 extractions on same file
@@ -60,7 +60,7 @@ fn bench_batch_processing(c: &mut Criterion) {
 
     // Pure extraction (no file reading)
     group.bench_function("pure_extraction", |b| {
-        let file = NbtFile::read(cube_data).unwrap();
+        let file = NbtFile::read(cube_data, None).unwrap();
         b.iter(|| {
             let result = extract_single_field(&file, "palette");
             black_box(result)
@@ -82,7 +82,7 @@ fn bench_parallel_processing(c: &mut Criterion) {
         b.iter(|| {
             let mut results = Vec::with_capacity(5);
             for _ in 0..5 {
-                let file = NbtFile::read(black_box(cube_data)).unwrap();
+                let file = NbtFile::read(black_box(cube_data), None).unwrap();
                 let result = extract_single_field(&file, "palette");
                 results.push(result);
             }

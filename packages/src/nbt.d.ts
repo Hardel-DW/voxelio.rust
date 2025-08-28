@@ -1,7 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
-export function nbt_file_read(data: Uint8Array): number;
-export function nbt_file_read_lazy(data: Uint8Array, fields: Array<any>): number;
+export function nbt_file_read(data: Uint8Array, fields?: Array<any> | null): number;
 export function nbt_file_write(handle: number): Uint8Array;
 export function nbt_file_dispose(handle: number): void;
 export function nbt_get_string(handle: number, key: string): string;
@@ -28,8 +27,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly nbt_file_read: (a: number, b: number, c: number) => void;
-  readonly nbt_file_read_lazy: (a: number, b: number, c: number, d: number) => void;
+  readonly nbt_file_read: (a: number, b: number, c: number, d: number) => void;
   readonly nbt_file_write: (a: number, b: number) => void;
   readonly nbt_file_dispose: (a: number) => void;
   readonly nbt_get_string: (a: number, b: number, c: number, d: number) => void;

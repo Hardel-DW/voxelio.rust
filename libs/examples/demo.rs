@@ -72,7 +72,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let compressed_data = nbt_file.write()?;
     println!("5. Compressed NBT size: {} bytes", compressed_data.len());
 
-    let decompressed_file = NbtFile::read(&compressed_data)?;
+    let decompressed_file = NbtFile::read(&compressed_data, None)?;
     println!("6. Decompressed NBT successfully");
     println!("   Root name: {}", decompressed_file.root_name);
     println!("   Compression: {:?}", decompressed_file.compression);

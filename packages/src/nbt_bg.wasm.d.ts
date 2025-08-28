@@ -1,8 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
-export const nbt_file_read: (a: number, b: number, c: number) => void;
-export const nbt_file_read_lazy: (a: number, b: number, c: number, d: number) => void;
+export const nbt_file_read: (a: number, b: number, c: number, d: number) => void;
 export const nbt_file_write: (a: number, b: number) => void;
 export const nbt_file_dispose: (a: number) => void;
 export const nbt_get_string: (a: number, b: number, c: number, d: number) => void;

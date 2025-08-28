@@ -124,37 +124,15 @@ function passArray8ToWasm0(arg, malloc) {
 }
 /**
  * @param {Uint8Array} data
+ * @param {Array<any> | null} [fields]
  * @returns {number}
  */
-export function nbt_file_read(data) {
+export function nbt_file_read(data, fields) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_export_0);
         const len0 = WASM_VECTOR_LEN;
-        wasm.nbt_file_read(retptr, ptr0, len0);
-        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
-        if (r2) {
-            throw takeObject(r1);
-        }
-        return r0 >>> 0;
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-    }
-}
-
-/**
- * @param {Uint8Array} data
- * @param {Array<any>} fields
- * @returns {number}
- */
-export function nbt_file_read_lazy(data, fields) {
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_export_0);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.nbt_file_read_lazy(retptr, ptr0, len0, addHeapObject(fields));
+        wasm.nbt_file_read(retptr, ptr0, len0, isLikeNone(fields) ? 0 : addHeapObject(fields));
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);

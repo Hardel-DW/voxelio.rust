@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "target": "ES2022",
+        "target": "ES2023",
         "module": "ESNext",
         "moduleResolution": "Bundler",
         "allowImportingTsExtensions": false,
@@ -16,19 +16,18 @@
         "newLine": "LF",
         "skipLibCheck": true,
         "outDir": "./dist",
-        "rootDir": "./src",
         "lib": [
-            "ES2022",
+            "ES2023",
             "DOM"
         ]
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "bench/**/*"
     ],
     "exclude": [
         "dist",
         "wasm",
-        "node_modules",
-        "bench"
+        "node_modules"
     ]
 }

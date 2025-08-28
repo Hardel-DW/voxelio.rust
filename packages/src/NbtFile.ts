@@ -1,4 +1,4 @@
-import { nbt_file_read, nbt_file_write, nbt_file_dispose, nbt_get_string, nbt_get_number, nbt_get_root, nbt_file_set_list_item_string, nbt_file_read_lazy } from "./nbt";
+import { nbt_file_read, nbt_file_write, nbt_file_dispose, nbt_get_string, nbt_get_number, nbt_get_root, nbt_file_set_list_item_string } from "./nbt";
 import { NbtTag } from "./NbtTag";
 import { ensureWasmInit } from "./wasm";
 
@@ -10,15 +10,9 @@ export class NbtFile {
         this.handle = handle;
     }
 
-    static async from(data: Uint8Array): Promise<NbtFile> {
+    static async from(data: Uint8Array, fields?: string[]): Promise<NbtFile> {
         await ensureWasmInit();
-        const handle = nbt_file_read(data);
-        return new NbtFile(handle);
-    }
-
-    static async fromLazy(data: Uint8Array, fields: string[]): Promise<NbtFile> {
-        await ensureWasmInit();
-        const handle = nbt_file_read_lazy(data, fields);
+        const handle = nbt_file_read(data, fields);
         return new NbtFile(handle);
     }
 

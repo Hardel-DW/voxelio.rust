@@ -11,8 +11,11 @@ importers:
       tsdown:
         specifier: ^0.2.0
         version: 0.2.17(rollup@4.44.2)(typescript@5.8.3)
+      tsx:
+        specifier: ^4.0.0
+        version: 4.20.3
       typescript:
-        specifier: ^5.0.0
+        specifier: ^5.2.0
         version: 5.8.3
       vitest:
         specifier: ^1.0.0

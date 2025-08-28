@@ -104,29 +104,8 @@ pub struct NbtFile {
 }
 
 impl NbtFile {
-    pub fn read(data: &[u8]) -> Result<Self> {
-        let format = detect_compression(data);
-
-        let decompressed = decompress_optimized(data, format)?;
-
-        let mut reader = NbtReader::new(&decompressed, Endian::Big);
-        let tag_type = reader.read_u8()?;
-
-        if tag_type != 10 {
-            return Err(NbtError::Parse("Expected compound tag at root".to_string()));
-        }
-
-        let root_name = reader.read_string()?;
-        let root = reader.read_tag(tag_type)?;
-
-        Ok(Self {
-            root,
-            root_name,
-            compression: format,
-        })
-    }
-
-    pub fn read_lazy(data: &[u8], fields: &[&str]) -> Result<Self> {
+    pub fn read(data: &[u8], fields: Option<&[&str]>) -> Result<Self> {
+        let fields = fields.unwrap_or(&[]);
         let format = detect_compression(data);
 
         let decompressed = decompress_optimized(data, format)?;
@@ -174,7 +153,9 @@ impl NbtFile {
         data: &[u8],
         format: CompressionFormat,
         endian: Endian,
+        fields: Option<&[&str]>,
     ) -> Result<Self> {
+        let fields = fields.unwrap_or(&[]);
         let decompressed = decompress_optimized(data, format)?;
 
         let mut reader = NbtReader::new(&decompressed, endian);
@@ -185,7 +166,12 @@ impl NbtFile {
         }
 
         let root_name = reader.read_string()?;
-        let root = reader.read_tag(tag_type)?;
+        
+        let root = if fields.is_empty() {
+            reader.read_tag(tag_type)?
+        } else {
+            reader.read_compound_selective(fields)?
+        };
 
         Ok(Self {
             root,

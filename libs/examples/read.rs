@@ -3,7 +3,7 @@ use nbt::NbtTag;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let cube_data = std::fs::read("mock/cube.nbt")?;
-    let nbt_file = NbtFile::read(&cube_data)?;
+    let nbt_file = NbtFile::read(&cube_data, None)?;
 
     // Go to palette and print block names
     if let NbtTag::Compound(root) = &nbt_file.root {

@@ -1,5 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-    test: {},
-}); 
+    esbuild: {
+        target: 'ES2023',
+    },
+    test: {
+        globals: true,
+    },
+});

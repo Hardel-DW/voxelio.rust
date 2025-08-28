@@ -88,7 +88,7 @@ impl Chunk {
     pub fn get_nbt(&mut self) -> Result<&NbtFile> {
         if self.cached_nbt.is_none() {
             let nbt_file =
-                NbtFile::read_with_format(&self.raw_data, self.get_compression(), Endian::Big)?;
+                NbtFile::read_with_format(&self.raw_data, self.get_compression(), Endian::Big, None)?;
             self.cached_nbt = Some(nbt_file);
         }
         Ok(self.cached_nbt.as_ref().unwrap())
@@ -103,7 +103,7 @@ impl Chunk {
     /// Get the root NBT tag (immutable version - parses without caching)
     pub fn get_root_immutable(&self) -> Result<NbtTag> {
         let nbt_file =
-            NbtFile::read_with_format(&self.raw_data, self.get_compression(), Endian::Big)?;
+            NbtFile::read_with_format(&self.raw_data, self.get_compression(), Endian::Big, None)?;
         Ok(nbt_file.root)
     }
 

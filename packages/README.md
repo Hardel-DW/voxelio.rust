@@ -1,13 +1,13 @@
 # NBT TypeScript - Zero Abstraction WASM
 
-Ultra-performant NBT/MCA library for Minecraft files, direct Rust/WASM mapping.
+Performant NBT/MCA library for Minecraft files, direct Rust/WASM mapping.
 
 ## 🎯 **Design Philosophy**
 
-- **Direct WASM mapping** : Pas de wrapper inutile, accès direct au Rust
-- **Performance native** : Délègue TOUT à Rust, TypeScript = bridge only
-- **API simple** : Méthodes directes, pas d'over-engineering
-- **Type-safe** : Types stricts sans "as" ou conversions
+- **Direct WASM mapping**: No unnecessary wrappers, direct Rust access
+- **Native performance**: Delegates EVERYTHING to Rust, TypeScript = bridge only
+- **API**: Direct methods, no over-engineering
+- **Type-safe**: Strict types without "as" or conversions
 
 ## 🚀 **API Core**
 
@@ -16,9 +16,6 @@ Ultra-performant NBT/MCA library for Minecraft files, direct Rust/WASM mapping.
 ```typescript
 import { NbtFile } from "./index";
 import initNbt from "./wasm";
-
-// Initialize once
-initNbt();
 
 // === READ ===
 const nbt = NbtFile.read(data);
@@ -82,6 +79,7 @@ tag.getListItem(index);
 ```
 
 ## 📋 **Types - Zero Conversion**
+
 ```typescript
 type CompressionFormat = "none" | "gzip" | "zlib";
 
@@ -144,33 +142,7 @@ npm run build
 ```
 
 ```typescript
-import initNbt, { NbtFile, NbtRegion } from "./index";
-
-// Initialize WASM
-initNbt();
-
-// Use directly - zero abstraction
+import { NbtFile, NbtRegion } from "./index";
 const nbt = NbtFile.read(data);
-const root = nbt.getRoot(); // JsNbtTag from Rust
+const root = nbt.getRoot();
 ```
-
----
-
-## 🧠 **Architecture - Pure Bridge**
-
-- **Rust Core** : NBT parsing, compression, regions, ALL logic
-- **WASM Bridge** : JsNbtFile, JsNbtTag, JsNbtRegion - direct exports
-- **TypeScript** : Zero logic, just expose WASM cleanly
-
-**Result** : Maximum performance, minimum abstraction. 🚀
-
-## 📈 **Performance Comparison**
-
-| Operation    | Before        | After           | Improvement     |
-| ------------ | ------------- | --------------- | --------------- |
-| File read    | ~50ms         | ~15ms           | **3.3x faster** |
-| Chunk access | ~10ms         | ~2ms            | **5x faster**   |
-| Path parsing | TypeScript    | Rust            | **10x faster**  |
-| Memory usage | High (copies) | Low (zero-copy) | **50% less**    |
-
-**Philosophy** : Let Rust do the work, TypeScript just provides clean API. 🎯

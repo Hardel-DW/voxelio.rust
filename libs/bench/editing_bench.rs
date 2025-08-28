@@ -25,7 +25,7 @@ fn bench_editing(c: &mut Criterion) {
 
     group.bench_function("edit_10x", |b| {
         b.iter(|| {
-            let mut nbt_file = NbtFile::read(cube_data).unwrap();
+            let mut nbt_file = NbtFile::read(cube_data, None).unwrap();
             for _ in 0..10 {
                 edit_nbt_file(&mut nbt_file);
             }

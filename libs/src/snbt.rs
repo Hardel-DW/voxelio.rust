@@ -12,12 +12,6 @@ use winnow::{
 #[cfg(feature = "snbt")]
 type Input<'i> = &'i str;
 
-/// Parse SNBT string to NBT tag
-#[cfg(feature = "snbt")]
-pub fn parse_snbt(input: &str) -> Result<NbtTag> {
-    parse_tag(input)
-}
-
 /// Format NBT tag to SNBT string
 #[cfg(feature = "snbt")]
 pub fn format_snbt(tag: &NbtTag) -> String {
@@ -30,9 +24,9 @@ pub fn format_snbt_pretty(tag: &NbtTag) -> String {
     format_tag(tag, true)
 }
 
-/// Parse SNBT string to NBT tag (internal implementation)
+/// Parse SNBT string to NBT tag
 #[cfg(feature = "snbt")]
-pub fn parse_tag(input: &str) -> Result<NbtTag> {
+pub fn parse_snbt(input: &str) -> Result<NbtTag> {
     let mut input = input.trim();
     match parse_value.parse_next(&mut input) {
         Ok(tag) => {

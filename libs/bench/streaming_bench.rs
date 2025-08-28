@@ -38,14 +38,14 @@ fn bench_optimized_loading(c: &mut Criterion) {
     // Test standard read optimisé
     group.bench_function("optimized_read_cube", |b| {
         b.iter(|| {
-            let file = NbtFile::read(black_box(cube_data)).unwrap();
+            let file = NbtFile::read(black_box(cube_data), None).unwrap();
             black_box(file)
         })
     });
 
     group.bench_function("optimized_read_taiga", |b| {
         b.iter(|| {
-            let file = NbtFile::read(black_box(taiga_data)).unwrap();
+            let file = NbtFile::read(black_box(taiga_data), None).unwrap();
             black_box(file)
         })
     });
@@ -53,7 +53,7 @@ fn bench_optimized_loading(c: &mut Criterion) {
     // Test lazy read - palette uniquement
     group.bench_function("lazy_read_palette_only", |b| {
         b.iter(|| {
-            let file = NbtFile::read_lazy(black_box(cube_data), &["palette"]).unwrap();
+            let file = NbtFile::read(black_box(cube_data), Some(&["palette"])).unwrap();
             black_box(file)
         })
     });
@@ -62,7 +62,7 @@ fn bench_optimized_loading(c: &mut Criterion) {
     group.bench_function("lazy_read_multiple_fields", |b| {
         b.iter(|| {
             let file =
-                NbtFile::read_lazy(black_box(cube_data), &["palette", "Version", "DataVersion"])
+                NbtFile::read(black_box(cube_data), Some(&["palette", "Version", "DataVersion"]))
                     .unwrap();
             black_box(file)
         })
@@ -76,8 +76,8 @@ fn bench_streaming_operations(c: &mut Criterion) {
     let taiga_data = include_bytes!("mock/taiga_armorer_2.nbt");
 
     // Pre-load files outside benchmarks
-    let cube_file = NbtFile::read(cube_data).unwrap();
-    let taiga_file = NbtFile::read(taiga_data).unwrap();
+    let cube_file = NbtFile::read(cube_data, None).unwrap();
+    let taiga_file = NbtFile::read(taiga_data, None).unwrap();
 
     let mut group = c.benchmark_group("Streaming Operations");
     group.measurement_time(Duration::from_secs(5));
@@ -110,7 +110,7 @@ fn bench_streaming_operations(c: &mut Criterion) {
     // File loading benchmark (separate)
     group.bench_function("file_loading_only", |b| {
         b.iter(|| {
-            let file = NbtFile::read(black_box(cube_data)).unwrap();
+            let file = NbtFile::read(black_box(cube_data), None).unwrap();
             black_box(file)
         })
     });
@@ -128,7 +128,7 @@ fn bench_lazy_vs_full_parsing(c: &mut Criterion) {
     // Full parsing
     group.bench_function("full_parse_then_extract", |b| {
         b.iter(|| {
-            let file = NbtFile::read(black_box(cube_data)).unwrap();
+            let file = NbtFile::read(black_box(cube_data), None).unwrap();
             let palette = extract_palette(&file);
             black_box(palette)
         })
@@ -137,7 +137,7 @@ fn bench_lazy_vs_full_parsing(c: &mut Criterion) {
     // Lazy parsing - palette only
     group.bench_function("lazy_parse_palette_direct", |b| {
         b.iter(|| {
-            let file = NbtFile::read_lazy(black_box(cube_data), &["palette"]).unwrap();
+            let file = NbtFile::read(black_box(cube_data), Some(&["palette"])).unwrap();
             let palette = extract_palette(&file);
             black_box(palette)
         })
@@ -146,7 +146,7 @@ fn bench_lazy_vs_full_parsing(c: &mut Criterion) {
     // Compare load + extract vs lazy load
     group.bench_function("load_extract_multiple", |b| {
         b.iter(|| {
-            let file = NbtFile::read(black_box(cube_data)).unwrap();
+            let file = NbtFile::read(black_box(cube_data), None).unwrap();
             let (palette, version, data_version) = extract_multiple_fields(&file);
             black_box((palette, version, data_version))
         })
@@ -155,7 +155,7 @@ fn bench_lazy_vs_full_parsing(c: &mut Criterion) {
     group.bench_function("lazy_load_multiple", |b| {
         b.iter(|| {
             let file =
-                NbtFile::read_lazy(black_box(cube_data), &["palette", "Version", "DataVersion"])
+                NbtFile::read(black_box(cube_data), Some(&["palette", "Version", "DataVersion"]))
                     .unwrap();
             let (palette, version, data_version) = extract_multiple_fields(&file);
             black_box((palette, version, data_version))
@@ -169,8 +169,8 @@ fn bench_memory_efficiency(c: &mut Criterion) {
     let cube_data = include_bytes!("mock/cube.nbt");
     let taiga_data = include_bytes!("mock/taiga_armorer_2.nbt");
 
-    let cube_file = NbtFile::read(cube_data).unwrap();
-    let taiga_file = NbtFile::read(taiga_data).unwrap();
+    let cube_file = NbtFile::read(cube_data, None).unwrap();
+    let taiga_file = NbtFile::read(taiga_data, None).unwrap();
 
     let mut group = c.benchmark_group("Memory Efficiency");
     group.measurement_time(Duration::from_secs(5));

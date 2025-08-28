@@ -1,13 +1,9 @@
 {
     "name": "@voxelio/nbt",
-    "version": "0.3.0",
+    "version": "0.4.6",
     "type": "module",
-    "exports": {
-        ".": {
-            "import": "./dist/index.js",
-            "types": "./dist/index.d.ts"
-        }
-    },
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
     "files": [
         "dist/**/*.js",
         "dist/**/*.d.ts",
@@ -17,15 +13,16 @@
         "build:wasm": "cd ../libs && cargo build --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir ../packages/src ../target/wasm32-unknown-unknown/release/nbt.wasm",
         "build:ts": "tsdown && copy src\\nbt_bg.wasm dist\\nbt_bg.wasm",
         "build": "npm run build:wasm && npm run build:ts",
-        "test": "vitest",
-        "bench": "vitest bench",
+        "test": "vitest --run",
+        "bench": "vitest bench --run",
         "check": "tsc --noEmit"
     },
     "dependencies": {},
     "devDependencies": {
-        "typescript": "^5.0.0",
+        "typescript": "^5.2.0",
         "tsdown": "^0.2.0",
-        "vitest": "^1.0.0"
+        "vitest": "^1.0.0",
+        "tsx": "^4.0.0"
     },
     "publishConfig": {
         "access": "public"

@@ -5,5 +5,5 @@ import { bench } from "vitest";
 const data = readFileSync('./examples/cube.nbt');
 
 bench("Read Cube NBT Data", async () => {
-    using nbt = await NbtFile.fromLazy(data, ["DataVersion"]);
+    using nbt = await NbtFile.from(data, ["DataVersion"]);
 }, { iterations: 100 }); 
