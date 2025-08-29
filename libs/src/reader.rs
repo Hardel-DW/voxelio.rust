@@ -84,7 +84,7 @@ impl<'a> NbtReader<'a> {
         let len = self.read_i16()? as usize;
         let bytes = self.read_bytes(len)?;
         String::from_utf8(bytes.to_vec())
-            .map_err(|e| NbtError::Parse(format!("Invalid UTF-8: {}", e)))
+            .map_err(|e| NbtError::Parse(format!("Invalid UTF-8: {e}")))
     }
 
     pub fn read_tag(&mut self, tag_type: u8) -> Result<NbtTag> {

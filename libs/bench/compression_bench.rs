@@ -1,8 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
-use nbt::{
-    compress_data, decompress_optimized, detect_compression, CompressionFormat,
-};
+use nbt::{compress_data, decompress_optimized, detect_compression, CompressionFormat};
 
 fn bench_different_compression_formats(c: &mut Criterion) {
     let cube_data = include_bytes!("mock/cube.nbt");

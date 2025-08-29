@@ -80,8 +80,12 @@ impl Chunk {
     /// Parse NBT data (cached after first call)
     pub fn get_nbt(&mut self) -> Result<&NbtFile> {
         if self.cached_nbt.is_none() {
-            let nbt_file =
-                NbtFile::read_with_format(&self.raw_data, self.get_compression(), Endian::Big, None)?;
+            let nbt_file = NbtFile::read_with_format(
+                &self.raw_data,
+                self.get_compression(),
+                Endian::Big,
+                None,
+            )?;
             self.cached_nbt = Some(nbt_file);
         }
         Ok(self.cached_nbt.as_ref().unwrap())
@@ -373,5 +377,3 @@ pub fn read_region(data: &[u8]) -> Result<Region> {
 pub fn write_region(region: &Region) -> Result<Vec<u8>> {
     region.write()
 }
-
-    

@@ -42,7 +42,10 @@ static REGION_STORE: LazyLock<Mutex<RegionStore>> = LazyLock::new(|| {
 });
 
 #[wasm_bindgen]
-pub fn nbt_file_read(data: &[u8], fields: Option<js_sys::Array>) -> std::result::Result<u32, JsValue> {
+pub fn nbt_file_read(
+    data: &[u8],
+    fields: Option<js_sys::Array>,
+) -> std::result::Result<u32, JsValue> {
     let result = if let Some(fields_array) = fields {
         let fields_vec: Vec<String> = fields_array
             .iter()
@@ -62,7 +65,7 @@ pub fn nbt_file_read(data: &[u8], fields: Option<js_sys::Array>) -> std::result:
             store.files.insert(id, file);
             Ok(id)
         }
-        Err(e) => Err(JsValue::from_str(&format!("Failed to read NBT: {}", e))),
+        Err(e) => Err(JsValue::from_str(&format!("Failed to read NBT: {e}"))),
     }
 }
 
@@ -72,7 +75,7 @@ pub fn nbt_file_write(handle: u32) -> std::result::Result<Vec<u8>, JsValue> {
     match store.files.get(&handle) {
         Some(file) => match file.write() {
             Ok(data) => Ok(data),
-            Err(e) => Err(JsValue::from_str(&format!("Write error: {}", e))),
+            Err(e) => Err(JsValue::from_str(&format!("Write error: {e}"))),
         },
         None => Err(JsValue::from_str("Invalid file handle")),
     }
@@ -352,7 +355,7 @@ pub fn nbt_region_read(data: &[u8]) -> std::result::Result<u32, JsValue> {
             store.regions.insert(id, region);
             Ok(id)
         }
-        Err(e) => Err(JsValue::from_str(&format!("Failed to read region: {}", e))),
+        Err(e) => Err(JsValue::from_str(&format!("Failed to read region: {e}"))),
     }
 }
 
@@ -362,7 +365,7 @@ pub fn nbt_region_write(handle: u32) -> std::result::Result<Vec<u8>, JsValue> {
     match store.regions.get(&handle) {
         Some(region) => match region.write() {
             Ok(data) => Ok(data),
-            Err(e) => Err(JsValue::from_str(&format!("Write error: {}", e))),
+            Err(e) => Err(JsValue::from_str(&format!("Write error: {e}"))),
         },
         None => Err(JsValue::from_str("Invalid region handle")),
     }

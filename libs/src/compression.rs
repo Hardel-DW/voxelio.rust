@@ -154,7 +154,7 @@ impl NbtFile {
         }
 
         let root_name = reader.read_string()?;
-        
+
         let root = if fields.is_empty() {
             reader.read_tag(tag_type)?
         } else {

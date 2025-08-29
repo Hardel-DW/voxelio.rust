@@ -61,9 +61,11 @@ fn bench_optimized_loading(c: &mut Criterion) {
     // Test lazy read - champs multiples
     group.bench_function("lazy_read_multiple_fields", |b| {
         b.iter(|| {
-            let file =
-                NbtFile::read(black_box(cube_data), Some(&["palette", "Version", "DataVersion"]))
-                    .unwrap();
+            let file = NbtFile::read(
+                black_box(cube_data),
+                Some(&["palette", "Version", "DataVersion"]),
+            )
+            .unwrap();
             black_box(file)
         })
     });
@@ -154,9 +156,11 @@ fn bench_lazy_vs_full_parsing(c: &mut Criterion) {
 
     group.bench_function("lazy_load_multiple", |b| {
         b.iter(|| {
-            let file =
-                NbtFile::read(black_box(cube_data), Some(&["palette", "Version", "DataVersion"]))
-                    .unwrap();
+            let file = NbtFile::read(
+                black_box(cube_data),
+                Some(&["palette", "Version", "DataVersion"]),
+            )
+            .unwrap();
             let (palette, version, data_version) = extract_multiple_fields(&file);
             black_box((palette, version, data_version))
         })

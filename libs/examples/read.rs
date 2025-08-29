@@ -11,7 +11,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             for (i, item) in items.iter().enumerate() {
                 if let NbtTag::Compound(block) = item {
                     if let Some(NbtTag::String(name)) = block.get("Name") {
-                        println!("Block {}: {}", i, name);
+                        println!("Block {i}: {name}");
                     }
                 }
             }

@@ -7,7 +7,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         inner_comp.insert("id".to_string(), nbt::NbtTag::Int(i));
         inner_comp.insert(
             "name".to_string(),
-            nbt::NbtTag::String(format!("block_{}", i)),
+            nbt::NbtTag::String(format!("block_{i}")),
         );
         inner_comp.insert("data".to_string(), nbt::NbtTag::ByteArray(vec![0i8; 100])); // Padding
         large_list.push(nbt::NbtTag::Compound(inner_comp));

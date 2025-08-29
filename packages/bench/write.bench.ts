@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { NbtFile } from "../dist/index";
+import { NbtFile } from "../src/index.js";
 import { bench } from "vitest";
 
 const data = readFileSync('./examples/cube.nbt');
@@ -11,7 +11,8 @@ bench("Edit Cube NBT Data", async () => {
 
     for (let i = 0; i < palette.getListLength(); i++) {
         using item = palette.getListItem(i);
-        if (item.getCompoundValue('Name').asString() === 'minecraft:mangrove_stairs') {
+        using nameTag = item.getCompoundValue('Name');
+        if (nameTag.asString() === 'minecraft:mangrove_stairs') {
             nbt.setListItemString('palette', i, 'Name', 'minecraft:cherry_stairs');
         }
     }

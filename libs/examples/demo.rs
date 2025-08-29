@@ -28,7 +28,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut item = HashMap::new();
         item.insert(
             "id".to_string(),
-            NbtTag::String(format!("minecraft:item_{}", i)),
+            NbtTag::String(format!("minecraft:item_{i}")),
         );
         item.insert("Count".to_string(), NbtTag::Byte(64));
         item.insert("Slot".to_string(), NbtTag::Byte(i as i8));
@@ -78,11 +78,11 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("   Compression: {:?}", decompressed_file.compression);
 
     let data_version = decompressed_file.get_number("DataVersion");
-    println!("7. DataVersion: {}", data_version);
+    println!("7. DataVersion: {data_version}");
 
     if let Some(NbtTag::Compound(player_data)) = decompressed_file.root.get("Player") {
         if let Some(NbtTag::String(name)) = player_data.get("Name") {
-            println!("   Player name: {}", name);
+            println!("   Player name: {name}");
         }
     }
 

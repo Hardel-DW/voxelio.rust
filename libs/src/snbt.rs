@@ -281,14 +281,14 @@ pub fn format_tag(tag: &NbtTag, pretty: bool) -> String {
 fn format_tag_with_indent(tag: &NbtTag, indent: usize, pretty: bool) -> String {
     match tag {
         NbtTag::End => String::new(),
-        NbtTag::Byte(v) => format!("{}b", v),
-        NbtTag::Short(v) => format!("{}s", v),
+        NbtTag::Byte(v) => format!("{v}b"),
+        NbtTag::Short(v) => format!("{v}s"),
         NbtTag::Int(v) => v.to_string(),
-        NbtTag::Long(v) => format!("{}L", v),
-        NbtTag::Float(v) => format!("{}f", v),
-        NbtTag::Double(v) => format!("{}d", v),
+        NbtTag::Long(v) => format!("{v}L"),
+        NbtTag::Float(v) => format!("{v}f"),
+        NbtTag::Double(v) => format!("{v}d"),
         NbtTag::ByteArray(arr) => {
-            format_array("B", arr.iter().map(|v| format!("{}b", v)), pretty, indent)
+            format_array("B", arr.iter().map(|v| format!("{v}b")), pretty, indent)
         }
         NbtTag::String(s) => format_string(s),
         NbtTag::List { items, .. } => format_list(items, pretty, indent),
@@ -297,7 +297,7 @@ fn format_tag_with_indent(tag: &NbtTag, indent: usize, pretty: bool) -> String {
             format_array("I", arr.iter().map(|v| v.to_string()), pretty, indent)
         }
         NbtTag::LongArray(arr) => {
-            format_array("L", arr.iter().map(|v| format!("{}L", v)), pretty, indent)
+            format_array("L", arr.iter().map(|v| format!("{v}L")), pretty, indent)
         }
     }
 }
@@ -307,7 +307,7 @@ fn format_string(s: &str) -> String {
     if s.chars()
         .any(|c| c.is_whitespace() || "{}[],:\"'".contains(c))
     {
-        format!("\"{}\"", s)
+        format!("\"{s}\"")
     } else {
         s.to_string()
     }
@@ -325,7 +325,7 @@ where
             "[{};\n{}{}\n{}]",
             prefix,
             inner_indent,
-            items.join(&format!(",\n{}", inner_indent)),
+            items.join(&format!(",\n{inner_indent}")),
             outer_indent
         )
     } else {
@@ -345,7 +345,7 @@ fn format_list(items: &[NbtTag], pretty: bool, indent: usize) -> String {
         format!(
             "[\n{}{}\n{}]",
             inner_indent,
-            formatted.join(&format!(",\n{}", inner_indent)),
+            formatted.join(&format!(",\n{inner_indent}")),
             outer_indent
         )
     } else {
@@ -370,11 +370,10 @@ fn format_compound(map: &HashMap<String, NbtTag>, pretty: bool, indent: usize) -
         format!(
             "{{\n{}{}\n{}}}",
             inner_indent,
-            entries.join(&format!(",\n{}", inner_indent)),
+            entries.join(&format!(",\n{inner_indent}")),
             outer_indent
         )
     } else {
         format!("{{{}}}", entries.join(","))
     }
 }
-

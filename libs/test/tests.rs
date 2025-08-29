@@ -1,4 +1,4 @@
-use crate::{Endian, NbtReader, NbtTag, NbtWriter, HashMap};
+use nbt::{Endian, NbtReader, NbtTag, NbtWriter, HashMap};
 
 #[test]
 fn test_basic_types() {

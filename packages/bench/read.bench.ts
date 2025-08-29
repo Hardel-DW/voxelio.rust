@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { NbtFile } from "../src/NbtFile";
+import { NbtFile } from "../src/index.js";
 import { bench } from "vitest";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
